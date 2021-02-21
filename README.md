@@ -1,2 +1,2 @@
 # UltimateRepRapPost
-The ULTIMATE Duet3D RepRap Post-Processor for Autodesk Fusion 360
+The ULTIMATE Duet3D RepRap CNC Post-Processor for Autodesk Fusion 360
