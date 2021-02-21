@@ -1,11 +1,11 @@
 /**
   Copyright (C) 2012-2018 by Autodesk, Inc.
+  Copyright (C) 2020 by Bruce Royce
   All rights reserved.
 
-  Mach3Mill post processor configuration.
 
   $Revision: 41981 b469d519b41034f7622245f52b01f620c0e5ec7e $
-  $Date: 2021-02-19 19:59:58 $
+  $Date: 2021-02-21 23:59:58 $
 
   FORKID {A4D747BD-FEEF-4CE2-86CD-0D56966792FA}
 */
@@ -35,10 +35,11 @@ let groupNames = [
   "1- Workspace",
   "2- Multi-Tools",
   "3- Probes",
-  "4- General",
-  "5- Optionals",
-  "6- Descriptive Comments",
-  "7- Unsupported or Future Development"
+  "5- General",
+  "6- Optionals",
+  "7- Descriptive Comments",
+  "8- Unsupported or Future Development",
+  "4- Linear Backlash Compensation"
 ];
 
 // user-defined properties
@@ -79,7 +80,14 @@ properties = {
   optionalStop: false, // optional stop. Kills the gcode execution if used with manual tool change. Keep unchecked in that case
   useG28: false, // disable to avoid G28 output for safe machine retracts - when disabled you must manually ensure safe retracts
   useM6: false, // disable to avoid M6 output - preload is also disabled when M6 is disabled
-  preloadTool: false // (Unsupported)preloads next tool on tool change if any
+  preloadTool: false, // (Unsupported)preloads next tool on tool change if any
+  applyBacklashCompensation: true,
+  measuredBacklashXFor1mm:0, // in millimetre
+  measuredBacklashXFor10mm:0, // in millimetre
+  measuredBacklashYFor1mm:0.5, // in millimetre
+  measuredBacklashYFor10mm:0.8, // in millimetre
+  measuredBacklashZFor1mm:0, // in millimetre
+  measuredBacklashZFor10mm:0 // in millimetre
 };
 
 // user-defined property definitions
@@ -243,6 +251,49 @@ propertyDefinitions = {
       { title: "No", id: "no" },
       { title: "Without spindle direction", id: "without" }
     ]
+  },
+
+  applyBacklashCompensation: {
+    title: "Apply Backlash Compensation",
+    description: "Compensate for backlash in motion motor direction changes",
+    group: groupNames[8],
+    type: "boolean"
+  },
+  measuredBacklashXFor1mm:{
+    title: "X axis measured backlash for 1mm",
+    description: "X axis measured backlash for 1mm",
+    group: groupNames[8],
+    type: "number"
+  },
+  measuredBacklashXFor10mm:{
+    title: "X axis measured backlash for 10mm",
+    description: "X axis measured backlash for 1mm",
+    group: groupNames[8],
+    type: "number"
+  },
+  measuredBacklashYFor1mm:{
+    title: "Y axis measured backlash for 1mm",
+    description: "Y axis measured backlash for 1mm",
+    group: groupNames[8],
+    type: "number"
+  },
+  measuredBacklashYFor10mm:{
+    title: "Y axis measured backlash for 10mm",
+    description: "Y axis measured backlash for 10mm",
+    group: groupNames[8],
+    type: "number"
+  },
+  measuredBacklashZFor1mm:{
+    title: "Z axis measured backlash for 1mm",
+    description: "Z axis measured backlash for 1mm",
+    group: groupNames[8],
+    type: "number"
+  },
+  measuredBacklashZFor10mm:{
+    title: "Z axis measured backlash for 1mm",
+    description: "Z axis measured backlash for 10mm",
+    group: groupNames[8],
+    type: "number"
   }
 };
 
@@ -268,6 +319,43 @@ var bZProbe = {
   safeInside: 5, // how much of a square can tool go inside on the probe to avoid touching very conrner
   retract: Number(properties.probeZRetract) // distance tools go away to release the probe when they're done with it
 };
+var bCompensation = {
+  x1: Number(properties.measuredBacklashXFor1mm),
+  y1: Number(properties.measuredBacklashYFor1mm),
+  z1: Number(properties.measuredBacklashZFor1mm),
+  x10: Number(properties.measuredBacklashXFor10mm),
+  y10: Number(properties.measuredBacklashYFor10mm),
+  z10: Number(properties.measuredBacklashZFor10mm),
+  firstTime: [true, true, true], // for x, y, z
+  firstMove: [true, true, true],
+  oldPos: [0, 0, 0],
+  lastDir: ["none", "none", "none"],
+  axis: "none",
+  isFirstTime: function (axis) {
+      if (this.firstTime[axis]) {
+        this.firstTime[axis] = false;
+        return true;
+      } else {
+        return false ;}
+      },
+  isFirstMove: function (axis) {
+      if (this.firstMove[axis]) {
+        this.firstMove[axis] = false;
+        return true;
+      } else {
+        return false ;}
+      },
+  x : function() {
+    return (this.x1 >0 || this.x10>0);
+    },
+  y : function() {
+    return (this.y1 >0 || this.y10>0);
+    },
+  z : function() {
+      return (this.z1 >0 || this.z10>0);
+    }
+};
+
 var permittedCommentChars = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,=_-";
 var nFormat = createFormat({ prefix: "N", decimals: 0 });
 var gFormat = createFormat({ prefix: "G", decimals: 1 });
@@ -342,6 +430,7 @@ function onOpen() {
     maximumCircularSweep = toRad(90); // avoid potential center calculation errors for CNC
     writeComment("This is an output of "+longDescription);
     writeComment("This is prepared to be used on "+properties.printType);
+    setupBacklashCompensation();
   }
 
   if (false) {
@@ -900,9 +989,12 @@ function onRadiusCompensation() {
 }
 
 function onRapid(_x, _y, _z) {
-  var x = xOutput.format(_x);
-  var y = yOutput.format(_y);
-  var z = zOutput.format(_z);
+  // var x = xOutput.format(_x);
+  // var y = yOutput.format(_y);
+  // var z = zOutput.format(_z);
+  var x = xOutput.format(axialBacklashCompensation(0,_x));
+  var y = yOutput.format(axialBacklashCompensation(1,_y));
+  var z = zOutput.format(axialBacklashCompensation(2,_z));
   if (x || y || z) {
     if (pendingRadiusCompensation >= 0) {
       error(localize("Radius compensation mode cannot be changed at rapid traversal."));
@@ -914,9 +1006,14 @@ function onRapid(_x, _y, _z) {
 }
 
 function onLinear(_x, _y, _z, feed) {
-  var x = xOutput.format(_x);
-  var y = yOutput.format(_y);
-  var z = zOutput.format(_z);
+
+  // var x = xOutput.format(_x);
+  // var y = yOutput.format(_y);
+  // var z = zOutput.format(_z);
+
+  var x = xOutput.format(axialBacklashCompensation(0,_x));
+  var y = yOutput.format(axialBacklashCompensation(1,_y));
+  var z = zOutput.format(axialBacklashCompensation(2,_z));
   var f = feedOutput.format(feed);
   if (x || y || z) {
     if (pendingRadiusCompensation >= 0) {
@@ -1521,7 +1618,6 @@ function bZProbeBlock (currentWorkOffset) {
   bBeep();
   writeBlock("G90");
   bDialog("Remove Z-Probe", "Remove Z Probe", 2, false);
-  // writeBlock(mFormat.format(291) + " P\"Remove Z-Probe\" R\"Remove Z Probe\" S2");
   writeComment("TITLE-> Z Probe ENDS - - - ")
   return;
 }
@@ -1577,3 +1673,86 @@ function bSetAndPrintCurrentWorkOffset (workOffset, currentWorkOffset) {
   }
   return currentWorkOffset;
 }
+
+function setupBacklashCompensation() {
+  // return;
+  bCompensation.x1 = Number(properties.measuredBacklashXFor1mm);
+  bCompensation.y1 = Number(properties.measuredBacklashYFor1mm);
+  bCompensation.z1 = Number(properties.measuredBacklashZFor1mm);
+  bCompensation.x10 = Number(properties.measuredBacklashXFor10mm);
+  bCompensation.y10 = Number(properties.measuredBacklashYFor10mm);
+  bCompensation.z10 = Number(properties.measuredBacklashZFor10mm);
+  if (properties.applyBacklashCompensation) {
+    writeln ("; ------------------------------------------------------------")
+    writeln ("; Backlash compensation on motor direction changes are applied");
+    writeln ("; Backlash values on X: " +bCompensation.x1 +"..."+ bCompensation.x10);
+    writeln ("; Backlash values on Y: " +bCompensation.y1 +"..."+ bCompensation.y10);
+    writeln ("; Backlash values on Z: " +bCompensation.z1 +"..."+ bCompensation.z10);
+    writeln ("; ------------------------------------------------------------")
+  }
+}
+
+function axialBacklashCompensation(axis,_value) {
+    var axisLetter = ["x", "y", "z"];
+    if (properties.applyBacklashCompensation) {
+      if (bCompensation.isFirstTime(axis)) {
+        bCompensation.oldPos[axis] = _value;
+        return _value;
+      } else {
+          var _holder = _value;
+          var diff = getBacklashCompensationValue (axis, _value, bCompensation.oldPos[axis])
+          _value = _value + diff;
+          // for debugging
+            // writeln(";>"+axisLetter[axis]+" last: "+  bCompensation.oldPos[axis] +" | wanted "+_holder+" | adj: "+ _value
+            // + " | comp: " + diff) ;
+      }
+    }
+  bCompensation.oldPos[axis] = _value; // resetting the oldValue with a new one for the next use
+  return _value;
+}
+
+function getBacklashCompensationValue(axis, newPos, oldPos) {
+  if (newPos==oldPos) {
+    // writeln("; No adjustment needed");
+    return 0;
+  }
+  let compFlag = false;
+  let compensationValue = [0, 0, 0]; // for 1mm, for 10mm, applicable value, sign(0:Posetive, 1:Negative)
+  switch (axis) {
+    case 0:
+      compFlag = bCompensation.x;
+      compensationValue[0] = bCompensation.x1;
+      compensationValue[1] = bCompensation.x10;
+      break;
+    case 1:
+      compFlag = bCompensation.y;
+      compensationValue[0] = bCompensation.y1;
+      compensationValue[1] = bCompensation.y10;
+      break;
+    case 2:
+      compFlag = bCompensation.z;
+      compensationValue[0] = bCompensation.z1;
+      compensationValue[1] = bCompensation.z10;
+      break;
+  }
+  if (compFlag) { // no compensation in that particular axis
+    var thisDirection = (oldPos<newPos ? "up" : "down");
+    if (thisDirection != bCompensation.lastDir[axis]) {
+      bCompensation.lastDir[axis] = thisDirection; // update old one now the test is over
+      if (bCompensation.lastDir[axis] == "none") {
+        // first move? right?
+        bCompensation.lastDir[axis] = thisDirection;
+        return 0;
+      } else {
+        // direction is Changed
+        if (Math.abs(newPos - oldPos) > 5) {
+          compensationValue[2] = Math.abs(compensationValue[1]);
+        } else {
+          compensationValue[2] = Math.abs(compensationValue[0]);
+        } // comp value selection
+      } // dir change detected
+    } // direction mismatch with the old one
+    return (oldPos<newPos ? (compensationValue[2]) : (-1*compensationValue[2]));;
+  } // compensation is available
+  else {return 0;}
+} // function
