@@ -31,36 +31,36 @@ maximumCircularSweep = toRad(180);
 allowHelicalMoves = true;
 
 let groupNames = [
-  "1- Operation Type",
-  "2- Workspace",
-  "3- Multi-Tools",
-  "4- Probes",
-  "5- General",
-  "6- Optionals",
-  "7- Descriptive Comments",
-  "8- Unsupported or Future Development"
+  "7- Unsupported or Future Development",  // was "1- Operation Type"
+  "1- Workspace",
+  "2- Multi-Tools",
+  "3- Probes",
+  "4- General",
+  "5- Optionals",
+  "6- Descriptive Comments",
+  "7- Unsupported or Future Development"
 ];
 
 // user-defined properties
 properties = {
-  printType: ".cnc",
-  beepOn: true,
-  useWhichWCS: "54",
+  printType: ".cnc", // changes the file extension and leaves a comment. To be developed
+  beepOn: true, // if true beeps when operator attention is required
+  useWhichWCS: "54", // only if not set in Fusion 360 Setup, what is the prefered WCS for the probes
   manualToolChange: true, //Asks for manual tool change and program is interrupted until tool change is confirmed.
-  useWCS9AsToolChangeHome: true,
-  toolChangeXPos: 100,
-  toolChangeYPos: 250,
-  toolChangeZPos: 23,
+  useWCS9AsToolChangeHome: true,  // uses pre-recorded WCS 9 0,0,0 as tool change home
+  toolChangeXPos: 100, // only if not using WCS9, the x position for tool change
+  toolChangeYPos: 250, // only if not using WCS9, the y position for tool change
+  toolChangeZPos: 23,  // only if not using WCS9, the z position for tool change operation
   probeToolOnChange: "1", // probes a tool after changed in with by calling /macros/Tool Probe Auto
-  probeZThickness: 10, // ZProbe thickness in milimiters
-  probeZRetract: 5,
+  probeZThickness: 10, // ZProbe thickness in millimetre's
+  probeZRetract: 5,  // how far to retract to release probe after z-probe
   homeOnToolChange: false,  //homes all axis after tool is changed and before it is potentailly probed
   probe3dOnStart: false, // If true preforms a corner probe at the start of the script
-  probe3DPlacement: 0, //
-  probe3DLength: 50,
-  probe3DWidth: 50,
-  probe3DThickness: 10,
-  probe3DRetract: 10,
+  probe3DPlacement: 0, // which corner is the corner probe sitting at (see values below)
+  probe3DLength: 50, // x dimension of the corner probe
+  probe3DWidth: 50, // y dimension of the corner probe
+  probe3DThickness: 10, // z dimension of the corner probe
+  probe3DRetract: 10, // how far (in all directions) to retract to release corner probe after probing
 
   showSequenceNumbers: false, // show sequence numbers
   sequenceNumberStart: 10, // first sequence number
@@ -76,10 +76,10 @@ properties = {
   writeTools: true, // writes the tools
   writeVersion: true, // include version info
 
-  optionalStop: false, // optional stop
+  optionalStop: false, // optional stop. Kills the gcode execution if used with manual tool change. Keep unchecked in that case
   useG28: false, // disable to avoid G28 output for safe machine retracts - when disabled you must manually ensure safe retracts
   useM6: false, // disable to avoid M6 output - preload is also disabled when M6 is disabled
-  preloadTool: false // preloads next tool on tool change if any
+  preloadTool: false // (Unsupported)preloads next tool on tool change if any
 };
 
 // user-defined property definitions
@@ -262,7 +262,7 @@ var coolants = {
   off: 9
 };
 
-var bWCS = properties.useWhichWCS;
+var bWCS = properties.useWhichWCS; // keeps track of WCS RepRap Gcode number (54 to 59.3)
 var bZProbe = {
   thickness: Number(properties.probeZThickness), // in z axis and in milimiters
   safeInside: 5, // how much of a square can tool go inside on the probe to avoid touching very conrner
@@ -497,10 +497,11 @@ function onOpen() {
   }
   // print caution message
   bCautious();
+  // setting WCS9 for tool change if not preset
   bWCS9 ();
   // absolute coordinates and feed per min
   writeBlock(gAbsIncModal.format(90));
-
+  // movement units - Keep milimiters for the best results
   switch (unit) {
     case IN:
       writeBlock(gUnitModal.format(20));
@@ -509,7 +510,7 @@ function onOpen() {
       writeBlock(gUnitModal.format(21));
       break;
   }
-
+  // dust collector is not in use. If got a controlled one, uncomment below
   // if (properties.useDustCollector) {
   // writeBlock(mFormat.format(7)); // turns on dust collector
   // }
@@ -639,7 +640,7 @@ function isProbeOperation() {
 }
 
 function onSection() {
-
+  // if corner probing is requested on start
   if (isFirstSection() && properties.probe3dOnStart) {
     bCornerProbeBlock(bGetWorkOffset(getSection(0).workOffset));
   }
@@ -686,10 +687,10 @@ function onSection() {
       setCoolant(COOLANT_OFF);
     }
 
-    if (!isFirstSection() && properties.optionalStop) {
+    // using optional stop (M1) is a bad idea for multi-tools, it stops the whole process and jumps out of the gcode. Uncomment if needed
+    //if (!isFirstSection() && properties.optionalStop) {
       // onCommand(COMMAND_OPTIONAL_STOP);
-      // bad idea, stops the whole process
-    }
+    //}
 
     if (tool.number > 256) {
       warning(localize("Tool number exceeds maximum value."));
@@ -709,6 +710,7 @@ function onSection() {
       writeBlock(gFormat.format(28));
     }
 
+    // this is not needed because we do sophisticated probing
     // if (properties.probeToolOnChange) {
     //   //writeBlock(mFormat.format(98) + " P\"/macros/Tool Probe Auto\"");
     // }
@@ -879,7 +881,7 @@ function onDwell(seconds) {
   if (properties.dwellInSeconds) {
     writeBlock(gFormat.format(4), "P" + secFormat.format(seconds));
   } else {
-    milliseconds = clamp(1, seconds * 1000, 99999999);
+    milliseconds = clamp(1, seconds * 1000, 20000);
     writeBlock(gFormat.format(4), "P" + milliFormat.format(milliseconds));
   }
 }
@@ -1300,7 +1302,7 @@ function onClose() {
   writeBlock(mFormat.format(5)); // stop program, spindle stop, coolant off
 
   bDialog ("ALL DONE!", "Programme End", 1, false);
-  writeBlock("M0");
+  writeBlock("M0"); // flush out all operations in buffer to be preformed. No opt left unsent
   writeComment("All Ended");
 
 }
