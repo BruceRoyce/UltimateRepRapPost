@@ -540,9 +540,11 @@ function onOpen() {
   sequenceNumber = properties.sequenceNumberStart;
 
   if (programName) {
-    writeComment(programName);
+    writeln("");
+    writeComment("Program Name: "+programName);
   }
   if (programComment) {
+    write(";// ");
     writeComment(programComment);
   }
 
@@ -560,19 +562,19 @@ function onOpen() {
   hoursFormatted = hours < 10 ? "0" + hours : hours;
   minutesFormatted = minutes < 10 ? "0" + minutes : minutes;
   secondsFormatted = seconds < 10 ? "0" + seconds : seconds;
-  writeln("");
-  writeComment("Program created " + yearFormatted + "-" + monthFormatted + "-" + dateFormatted + "  " + hoursFormatted + "-" + minutesFormatted + "-" + secondsFormatted);
+  writeComment("GCode created on" + yearFormatted + "-" + monthFormatted + "-" + dateFormatted + " at " + hoursFormatted + "-" + minutesFormatted + "-" + secondsFormatted);
   writeln("");
 
   if (properties.writeVersion) {
-    writeComment(localize("--- POST ---"));
+    writeComment(localize("About this post-processor:"));
     if ((typeof getHeaderVersion == "function") && getHeaderVersion()) {
-      writeComment(localize("post version") + ": " + getHeaderVersion());
+      writeComment(localize("   post version") + ": " + getHeaderVersion());
     }
     if ((typeof getHeaderDate == "function") && getHeaderDate()) {
-      writeComment(localize("post modified") + ": " + getHeaderDate().replace(/:/g, "-"));
+      writeComment(localize("   post modified") + ": " + getHeaderDate().replace(/:/g, "-"));
     }
-    writeln("");
+    writeln("; - Generated for RepRap firmware 2.x running on Duet3D controller that works in CNC mode")
+    writeln(";                 -------------------            ------                          --------");
   }
 
   // dump machine configuration
@@ -581,7 +583,7 @@ function onOpen() {
   var description = machineConfiguration.getDescription();
 
   if (properties.writeMachine && (vendor || model || description)) {
-    writeComment(localize("Machine"));
+    writeComment(localize("Machine this post is generated for:"));
     if (vendor) {
       writeComment("  " + localize("vendor") + ": " + vendor);
     }
@@ -595,7 +597,7 @@ function onOpen() {
 
   // dump tool information
   if (properties.writeTools) {
-    writeComment("--- Tools ---");
+    writeComment("List of tools in this program");
     var zRanges = {};
     if (is3D()) {
       var numberOfSections = getNumberOfSections();
@@ -615,22 +617,27 @@ function onOpen() {
     if (tools.getNumberOfTools() > 0) {
       for (var i = 0; i < tools.getNumberOfTools(); ++i) {
         var tool = tools.getTool(i);
-        var comment = "T" + toolFormat.format(tool.number) + "  " +
+        var comment = "   "+"T" + toolFormat.format(tool.number) + "  " +
           "D=" + xyzFormat.format(tool.diameter) + " " +
           localize("CR") + "=" + xyzFormat.format(tool.cornerRadius);
         if ((tool.taperAngle > 0) && (tool.taperAngle < Math.PI)) {
           comment += " " + localize("TAPER") + "=" + taperFormat.format(tool.taperAngle) + localize("deg");
         }
         if (zRanges[tool.number]) {
-          comment += " - " + localize("ZMIN") + "=" + xyzFormat.format(zRanges[tool.number].getMinimum());
+          comment += " - " + localize("Z-MIN") + "=" + xyzFormat.format(zRanges[tool.number].getMinimum());
         }
         comment += " - " + getToolTypeName(tool.type);
         writeComment(comment);
+        if (properties.applyBacklashCompensation) {
+          writeln("; Backlash Compensation is ON and can affect tools motion boxs.");
+          writeln("; - Check the actual Min/Max at the bottom of this program. (scroll all the way down)")
+        }
       }
     }
   }
   // write tools ENDS
-
+  writeln("");
+  writeln("; -+- Program begins here -+-");
   if (false) {
     // check for duplicate tool number
     for (var i = 0; i < getNumberOfSections(); ++i) {
@@ -1490,11 +1497,11 @@ function onClose() {
   writeComment("All Ended");
   writeln ("; Tools motion box:");
   writeln ("; -----------------");
-  writeln ("; axis: min  max");
+  writeln ("; axis: [min | max]");
   writeln ("; -----------------");
-  writeln ("; X: ["+motionBox.mBox[0][0]+" "+motionBox.mBox[0][1]+"]");
-  writeln ("; Y: ["+motionBox.mBox[1][0]+" "+motionBox.mBox[1][1]+"]");
-  writeln ("; Z: ["+motionBox.mBox[2][0]+" "+motionBox.mBox[2][1]+"]");
+  writeln ("; on X: [min: "+motionBox.mBox[0][0]+" | max: "+motionBox.mBox[0][1]+"]");
+  writeln ("; on Y: [min: "+motionBox.mBox[1][0]+" | max: "+motionBox.mBox[1][1]+"]");
+  writeln ("; on Z: [min: "+motionBox.mBox[2][0]+" | max: "+motionBox.mBox[2][1]+"]");
   //motionBox.mBox();
 }
 
@@ -1791,6 +1798,7 @@ function setupBacklashCompensation() {
     writeln ("; Backlash values on X: " +bCompensation.x1 +"..."+ bCompensation.x10);
     writeln ("; Backlash values on Y: " +bCompensation.y1 +"..."+ bCompensation.y10);
     writeln ("; Backlash values on Z: " +bCompensation.z1 +"..."+ bCompensation.z10);
+    writeln ("; - Check actual tool motion box after compensation at the end of this file")
     writeln ("; ------------------------------------------------------------")
   }
 }
