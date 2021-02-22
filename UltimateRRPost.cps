@@ -87,7 +87,8 @@ properties = {
   measuredBacklashYFor1mm:0, // in millimetre
   measuredBacklashYFor10mm:0, // in millimetre
   measuredBacklashZFor1mm:0, // in millimetre
-  measuredBacklashZFor10mm:0 // in millimetre
+  measuredBacklashZFor10mm:0, // in millimetre
+  spindleRPMCatchupTime6K: 15, // in seconds
 };
 
 // user-defined property definitions
@@ -222,25 +223,76 @@ propertyDefinitions = {
     group: groupNames[2],
     type: "boolean"
   },
-
-
-  sequenceNumberStart: { title: "Start sequence number", description: "The number at which to start the sequence numbers.", group: groupNames[5], type: "integer" },
-  sequenceNumberIncrement: { title: "Sequence number increment", description: "The amount by which the sequence number is incremented by in each block.", group: groupNames[5], type: "integer" },
-  separateWordsWithSpace: { title: "Separate words with space", description: "Adds spaces between words if 'yes' is selected.", group: groupNames[5], type: "boolean" },
-
-  writeMachine: { title: "Write machine", description: "Output the machine settings in the header of the code.", group: groupNames[6], type: "boolean" },
-  writeTools: { title: "Write tool list", description: "Output a tool list in the header of the code.", group: groupNames[6], type: "boolean" },
-  writeVersion: { title: "Write version", description: "Write the version number in the header of the code.", group: groupNames[6], type: "boolean" },
-  useG28: { title: "G28 Safe retracts", description: "Disable to avoid G28 output for safe machine retracts. When disabled, you must manually ensure safe retracts.", group: groupNames[7], type: "boolean" },
-
-  useM6: { title: "Use M6", description: "Disable to avoid outputting M6. If disabled Preload is also disabled", group: groupNames[7], type: "boolean" },
-  showSequenceNumbers: { title: "Use sequence numbers", description: "Use sequence numbers for each block of outputted code.", group: groupNames[5], type: "boolean" },
-  preloadTool: { title: "Preload tool - Unsupported", description: "Preloads the next tool at a tool change (if any).", group: groupNames[7], type: "boolean" },
-  optionalStop: { title: "Optional stop. Uncheck in multi-tool Ops.", description: "Outputs optional stop code during when necessary in the code. It stops GCode execution in RepRap firmware", group: groupNames[7],type: "boolean" },
-
-  useRadius: { title: "Radius arcs", description: "If yes is selected, arcs are outputted using radius values rather than IJK.", group: groupNames[4], type: "boolean" },
-  dwellInSeconds: { title: "Dwell in seconds - Keep checked", description: "Specifies the unit for dwelling, set to 'Yes' for seconds and 'No' for milliseconds.", group: groupNames[4], type: "boolean" },
-  useDustCollector: { title: "Use dust collector", description: "Specifies if M7 and M9 are output for the dust collector.", group: groupNames[4], type: "boolean" },
+  sequenceNumberStart: {
+    title: "Start sequence number",
+    description: "The number at which to start the sequence numbers.",
+    group: groupNames[5],
+    type: "integer" },
+  sequenceNumberIncrement: {
+    title: "Sequence number increment",
+    description: "The amount by which the sequence number is incremented by in each block.",
+    group: groupNames[5],
+    type: "integer" },
+  separateWordsWithSpace: {
+    title: "Separate words with space",
+    description: "Adds spaces between words if 'yes' is selected.",
+    group: groupNames[5],
+    type: "boolean" },
+  writeMachine: {
+    title: "Write machine",
+    description: "Output the machine settings in the header of the code.",
+    group: groupNames[6],
+    type: "boolean" },
+  writeTools: {
+    title: "Write tool list",
+    description: "Output a tool list in the header of the code.",
+    group: groupNames[6],
+    type: "boolean" },
+  writeVersion: {
+    title: "Write version",
+    description: "Write the version number in the header of the code.",
+    group: groupNames[6],
+    type: "boolean" },
+  useG28: {
+    title: "G28 Safe retracts",
+    description: "Disable to avoid G28 output for safe machine retracts. When disabled, you must manually ensure safe retracts.",
+    group: groupNames[7],
+    type: "boolean" },
+  useM6: {
+    title: "Use M6",
+    description: "Disable to avoid outputting M6. If disabled Preload is also disabled",
+    group: groupNames[7],
+    type: "boolean" },
+  showSequenceNumbers: {
+    title: "Use sequence numbers",
+    description: "Use sequence numbers for each block of outputted code.",
+    group: groupNames[5],
+    type: "boolean" },
+  preloadTool: {
+    title: "Preload tool - Unsupported",
+    description: "Preloads the next tool at a tool change (if any).",
+    group: groupNames[7],
+    type: "boolean" },
+  optionalStop: {
+    title: "Optional stop. Uncheck in multi-tool Ops.",
+    description: "Bad idea! Outputs optional stop code during when necessary in the code. It stops GCode execution in RepRap firmware",
+    group: groupNames[7],
+    type: "boolean" },
+  useRadius: {
+    title: "Radius arcs",
+    description: "If yes is selected, arcs are outputted using radius values rather than IJK.",
+    group: groupNames[4],
+    type: "boolean" },
+  dwellInSeconds: {
+    title: "Dwell in seconds (Keep checked)",
+    description: "Specifies the unit for dwelling, set to 'Yes' for seconds and 'No' for milliseconds.",
+     group: groupNames[4],
+     type: "boolean" },
+  useDustCollector: {
+    title: "Use dust collector",
+    description: "Specifies if M7 and M9 are output for the dust collector.",
+    group: groupNames[4],
+    type: "boolean" },
   useRigidTapping: {
     title: "Use rigid tapping",
     description: "Select 'Yes' to enable, 'No' to disable, or 'Without spindle direction' to enable rigid tapping without outputting the spindle direction block.",
@@ -261,39 +313,45 @@ propertyDefinitions = {
   },
   measuredBacklashXFor1mm:{
     title: "X axis measured backlash for 1mm",
-    description: "X axis measured backlash for 1mm",
+    description: "The amount of measured error that the backlash causes in 1mm motion on X axis change of direction. In other words how much boost the motion requirs to sit on its intended place on change of direction",
     group: groupNames[8],
     type: "number"
   },
   measuredBacklashXFor10mm:{
     title: "X axis measured backlash for 10mm",
-    description: "X axis measured backlash for 1mm",
+    description: "The amount of measured error that the backlash causes in 10mm motion on X axis change of direction. In other words how much boost the motion requirs to sit on its intended place on change of direction",
     group: groupNames[8],
     type: "number"
   },
   measuredBacklashYFor1mm:{
     title: "Y axis measured backlash for 1mm",
-    description: "Y axis measured backlash for 1mm",
+    description: "The amount of measured error that the backlash causes in 1mm motion on Y axis change of direction. In other words how much boost the motion requirs to sit on its intended place on change of direction",
     group: groupNames[8],
     type: "number"
   },
   measuredBacklashYFor10mm:{
     title: "Y axis measured backlash for 10mm",
-    description: "Y axis measured backlash for 10mm",
+    description: "The amount of measured error that the backlash causes in 10mm motion on Y axis change of direction. In other words how much boost the motion requirs to sit on its intended place on change of direction",
     group: groupNames[8],
     type: "number"
   },
   measuredBacklashZFor1mm:{
     title: "Z axis measured backlash for 1mm",
-    description: "Z axis measured backlash for 1mm",
+    description: "The amount of measured error that the backlash causes in 1mm motion on Z axis change of direction. In other words how much boost the motion requirs to sit on its intended place on change of direction",
     group: groupNames[8],
     type: "number"
   },
   measuredBacklashZFor10mm:{
     title: "Z axis measured backlash for 1mm",
-    description: "Z axis measured backlash for 10mm",
+    description: "The amount of measured error that the backlash causes in 10mm motion on Z axis change of direction. In other words how much boost the motion requirs to sit on its intended place on change of direction",
     group: groupNames[8],
     type: "number"
+  },
+  spindleRPMCatchupTime6K: {
+    title: "Spindle RPM catch up time for 6K (in sec.)",
+    description: "How many seconds does the Spindle motor need to catch up from 0 to 6000. Determines time needed for all other speeds as well. For example if catch-up time for 6000 (6K) is 15 seconds, it will be 30 seconds for 12000 and 7.5 for 3000 and so forth.",
+    group: groupNames[1],
+    type: "integer"
   }
 };
 
@@ -356,7 +414,7 @@ var bCompensation = {
     }
 };
 
-var permittedCommentChars = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,=_-";
+var permittedCommentChars = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,=_->";
 var nFormat = createFormat({ prefix: "N", decimals: 0 });
 var gFormat = createFormat({ prefix: "G", decimals: 1 });
 var mFormat = createFormat({ prefix: "M", decimals: 0 });
@@ -856,9 +914,10 @@ function onSection() {
         (getParameter("operation:cycleType") == "left-tapping") ||
         (getParameter("operation:cycleType") == "tapping-with-chip-breaking"));
     if (!tapping || (tapping && !(properties.useRigidTapping == "without"))) {
-      var bruceDwellMSec = 0;
-      bruceDwellMSec = tool.spindleRPM * 2.5;
-      writeComment("LOGGING-> Spindle speed is: " + sOutput.format(tool.spindleRPM));
+      var bruceDwellMSec = tool.spindleRPM * Number(properties.spindleRPMCatchupTime6K) / 6000; //2.5 for my machine
+      var toMilli = 1000;
+      //writeComment("LOGGING-> Spindle speed is: " + sOutput.format(tool.spindleRPM));
+      writeln("SRPM: "+ tool.spindleRPM + " - " + properties.spindleRPMCatchupTime6K + " C " + bruceDwellMSec);
       writeBlock(
         // always outout spindle speed after tool change
         mFormat.format(tool.clockwise ? 3 : 4), "S"+parseInt(tool.spindleRPM)
@@ -867,18 +926,24 @@ function onSection() {
       // but only dwell if RPM or direction is changed
       if (isRpmChanged) {
         writeComment("LOGGING-> Dwelling for Spindle RPM change to catchup");
-        if (bruceDwellMSec < 5000) {
-          bruceDwellMSec = 5000;
+        bDialog("Dwelling for "+bruceDwellMSec+" seconds, for the spindle RPM to catch up", "Dwelling "+programName, 100+bruceDwellMSec, false)
+        if (properties.dwellInSeconds) {
+          toMilli = 1000;
+        } else {
+          toMilli = 1;
         }
-        if (bruceDwellMSec > 20000) {
-          while (bruceDwellMSec > 15000) {
-              writeBlock("G4 P15000");
-              writeBlock("M450        ;LOGGING-> Here used as a harmless stalling command that reports status");
-              bruceDwellMSec = parseInt(Number(bruceDwellMSec)-15000);
+        if (bruceDwellMSec < 5) {
+          bruceDwellMSec = 5;
+        }
+        if (bruceDwellMSec > 20) {
+          while (bruceDwellMSec > 15) {
+              onDwell(15*toMilli);
+              writeBlock("M450 ;LOGGING-> Here used as a harmless stalling command that reports status");
+              bruceDwellMSec = parseInt(Number(bruceDwellMSec)-15);
           }
         }
-        if (parseInt(bruceDwellMSec) > 10) {
-            writeBlock("G4 P" + bruceDwellMSec);
+        if (parseInt(bruceDwellMSec) > 1) {
+            onDwell(bruceDwellMSec*toMilli);
         }
       } // if RPM or Dir was changed
 
@@ -964,8 +1029,8 @@ function onSection() {
 }
 
 function onDwell(seconds) {
-  if (seconds > 18000) {
-    warning(localize("Dwelling time is out of range."));
+  if (seconds > 90000) {
+    warning(localize("Dwelling time is way too long."));
   }
   if (properties.dwellInSeconds) {
     writeBlock(gFormat.format(4), "P" + secFormat.format(seconds));
@@ -1467,11 +1532,20 @@ function bWCS9 () {
 
 function bDialog (p,r,s,jog) {
   var jogT = "";
-  if (jog) {
+  if (jog != false) {
     jogT = " X1 Y1 Z1";
   }
   writeComment("DIALOGUEBOX-> On Screen message");
-  if (s==0 || s==1) jogT = " T5";
+  if (s==0 || s==1) {
+    jogT = " T5";
+  }
+
+  if (s>100) {
+    if (s>120) s=120; // no more than 20 seconds message display
+    jogT = " T"+(s-100);
+    s=1; // with close message option
+  }
+
   writeBlock(mFormat.format(291) + " P\""+ p +"\" R\""+ r +"\" S"+s + jogT);
   return;
 }
