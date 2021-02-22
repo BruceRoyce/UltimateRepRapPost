@@ -916,10 +916,8 @@ function onSection() {
     if (!tapping || (tapping && !(properties.useRigidTapping == "without"))) {
       var bruceDwellMSec = tool.spindleRPM * Number(properties.spindleRPMCatchupTime6K) / 6000; //2.5 for my machine
       var toMilli = 1000;
-      //writeComment("LOGGING-> Spindle speed is: " + sOutput.format(tool.spindleRPM));
-      writeln("SRPM: "+ tool.spindleRPM + " - " + properties.spindleRPMCatchupTime6K + " C " + bruceDwellMSec);
+      // always outout spindle speed after tool change
       writeBlock(
-        // always outout spindle speed after tool change
         mFormat.format(tool.clockwise ? 3 : 4), "S"+parseInt(tool.spindleRPM)
       );
       // dwell for spindle rpm to settle (30Second for each 12000rpm - Min 5 sec)
