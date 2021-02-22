@@ -413,7 +413,31 @@ var bCompensation = {
       return (this.z1 >0 || this.z10>0);
     }
 };
-
+var motionBox = {
+  // x:[0,0], // min, max
+  // y:[0,0],
+  // z:[0,0],
+  mBox: [
+    [0, 0],
+    [0, 0],
+    [0, 0]
+  ],
+  setBox: function (axis, _value) {
+    // setting minimum
+    if (_value < this.mBox[axis][0]) {
+      this.mBox[axis][0] = _value;
+    } else if (_value > this.mBox[axis][1]) {  // setting maximum
+      this.mBox[axis][1] = _value;
+    }
+  }, // setter Ends
+  getBox: function () {
+    var boxText="";
+    for (i=0; i>3; i++) {
+      boxText += (";["+this.mBox[i][0]+" "+this.mBox[i][1]+"]");
+    }
+    return boxText;
+  }
+}
 var permittedCommentChars = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,=_->";
 var nFormat = createFormat({ prefix: "N", decimals: 0 });
 var gFormat = createFormat({ prefix: "G", decimals: 1 });
@@ -1464,7 +1488,14 @@ function onClose() {
   bDialog ("ALL DONE!", "Programme End", 1, false);
   writeBlock("M0"); // flush out all operations in buffer to be preformed. No opt left unsent
   writeComment("All Ended");
-
+  writeln ("; Tools motion box:");
+  writeln ("; -----------------");
+  writeln ("; axis: min  max");
+  writeln ("; -----------------");
+  writeln ("; X: ["+motionBox.mBox[0][0]+" "+motionBox.mBox[0][1]+"]");
+  writeln ("; Y: ["+motionBox.mBox[1][0]+" "+motionBox.mBox[1][1]+"]");
+  writeln ("; Z: ["+motionBox.mBox[2][0]+" "+motionBox.mBox[2][1]+"]");
+  //motionBox.mBox();
 }
 
 function bCautious() {
@@ -1780,6 +1811,7 @@ function axialBacklashCompensation(axis,_value) {
       }
     }
   bCompensation.oldPos[axis] = _value; // resetting the oldValue with a new one for the next use
+  motionBox.setBox(axis, _value);
   return _value;
 }
 
@@ -1789,7 +1821,7 @@ function getBacklashCompensationValue(axis, newPos, oldPos) {
     return 0;
   }
   let compFlag = false;
-  let compensationValue = [0, 0, 0]; // for 1mm, for 10mm, applicable value, sign(0:Posetive, 1:Negative)
+  let compensationValue = [0, 0, 0]; // for 1mm, for 10mm, applicable value
   switch (axis) {
     case 0:
       compFlag = bCompensation.x;
@@ -1807,24 +1839,26 @@ function getBacklashCompensationValue(axis, newPos, oldPos) {
       compensationValue[1] = bCompensation.z10;
       break;
   }
-  if (compFlag) { // no compensation in that particular axis
+  if (compFlag) { // if compesation is available in this particular axis
     var thisDirection = (oldPos<newPos ? "up" : "down");
     if (thisDirection != bCompensation.lastDir[axis]) {
-      bCompensation.lastDir[axis] = thisDirection; // update old one now the test is over
+      // writeln("; last moves: X: "+bCompensation.lastDir[0]+"/ Y: "+bCompensation.lastDir[1]+"/ Z: "+bCompensation.lastDir[2]);
+      // writeln("; this "+axis+": "+thisDirection);
       if (bCompensation.lastDir[axis] == "none") {
-        // first move? right?
+        // first move? right? Set this as the previous for the next calculation and return without compensation
         bCompensation.lastDir[axis] = thisDirection;
         return 0;
       } else {
-        // direction is Changed
-        if (Math.abs(newPos - oldPos) > 5) {
+        // direction is actually Changed
+        bCompensation.lastDir[axis] = thisDirection; // update old one now the test is over
+        if (Math.abs(newPos - oldPos) > 1) {
           compensationValue[2] = Math.abs(compensationValue[1]);
         } else {
           compensationValue[2] = Math.abs(compensationValue[0]);
         } // comp value selection
       } // dir change detected
     } // direction mismatch with the old one
-    return (oldPos<newPos ? (compensationValue[2]) : (-1*compensationValue[2]));;
-  } // compensation is available
-  else {return 0;}
+    return (thisDirection == "up" ? (compensationValue[2]) : (-1*compensationValue[2]));
+  } // compensation is available ends
+  else {return 0;} // if we're here it means the compesation was not available for the axis
 } // function
