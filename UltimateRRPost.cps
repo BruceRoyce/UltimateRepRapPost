@@ -53,14 +53,14 @@ properties = {
   toolChangeYPos: 250, // only if not using WCS9, the y position for tool change
   toolChangeZPos: 23,  // only if not using WCS9, the z position for tool change operation
   probeToolOnChange: "1", // probes a tool after changed in with by calling /macros/Tool Probe Auto
-  probeZThickness: 10, // ZProbe thickness in millimetre's
+  probeZThickness: 3, // ZProbe thickness in millimetre's
   probeZRetract: 5,  // how far to retract to release probe after z-probe
   homeOnToolChange: false,  //homes all axis after tool is changed and before it is potentailly probed
   probe3dOnStart: false, // If true preforms a corner probe at the start of the script
   probe3DPlacement: 0, // which corner is the corner probe sitting at (see values below)
   probe3DLength: 50, // x dimension of the corner probe
   probe3DWidth: 50, // y dimension of the corner probe
-  probe3DThickness: 10, // z dimension of the corner probe
+  probe3DThickness: 5, // z dimension of the corner probe
   probe3DRetract: 10, // how far (in all directions) to retract to release corner probe after probing
 
   showSequenceNumbers: false, // show sequence numbers
@@ -84,8 +84,8 @@ properties = {
   applyBacklashCompensation: true,
   measuredBacklashXFor1mm:0, // in millimetre
   measuredBacklashXFor10mm:0, // in millimetre
-  measuredBacklashYFor1mm:0.5, // in millimetre
-  measuredBacklashYFor10mm:0.8, // in millimetre
+  measuredBacklashYFor1mm:0, // in millimetre
+  measuredBacklashYFor10mm:0, // in millimetre
   measuredBacklashZFor1mm:0, // in millimetre
   measuredBacklashZFor10mm:0 // in millimetre
 };
