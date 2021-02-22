@@ -386,6 +386,7 @@ var bCompensation = {
   z10: Number(properties.measuredBacklashZFor10mm),
   firstTime: [true, true, true], // for x, y, z
   firstMove: [true, true, true],
+  lastRequestedPosition: [0, 0, 0],
   oldPos: [0, 0, 0],
   lastDir: ["none", "none", "none"],
   axis: "none",
@@ -1473,11 +1474,11 @@ function writeRetract() {
 function onClose() {
   writeln("");
 
-  // if (properties.useDustCollector) {
-  // writeBlock(mFormat.format(9)); // turns off dust collector
-  // } else {
-  // setCoolant(COOLANT_OFF);
-  // }
+  if (properties.useDustCollector) {
+  writeBlock(mFormat.format(9)); // turns off dust collector
+  } else {
+  setCoolant(COOLANT_OFF);
+  }
 
   writeRetract(Z);
 
@@ -1804,23 +1805,58 @@ function setupBacklashCompensation() {
 }
 
 function axialBacklashCompensation(axis,_value) {
+  if (properties.applyBacklashCompensation) {
+    var _holder = _value;
     var axisLetter = ["x", "y", "z"];
-    if (properties.applyBacklashCompensation) {
-      if (bCompensation.isFirstTime(axis)) {
-        bCompensation.oldPos[axis] = _value;
-        return _value;
-      } else {
-          var _holder = _value;
+    var isMoveReallyNeeded; // check to see if move really needed
+    if (bCompensation.lastRequestedPosition[axis] == _value) {
+      isMoveReallyNeeded = false;
+    } else {
+      isMoveReallyNeeded = true;
+    }
+    bCompensation.lastRequestedPosition[axis] = _value;
+    if (bCompensation.isFirstTime(axis)) {
+      bCompensation.oldPos[axis] = _holder;
+    } else {
+      if (isMoveReallyNeeded) {
           var diff = getBacklashCompensationValue (axis, _value, bCompensation.oldPos[axis])
           _value = _value + diff;
-          // for debugging
-            // writeln(";>"+axisLetter[axis]+" last: "+  bCompensation.oldPos[axis] +" | wanted "+_holder+" | adj: "+ _value
-            // + " | comp: " + diff) ;
-      }
+          bCompensation.oldPos[axis] = _value; // resetting the oldValue with a new one for the next use
+        }
     }
-  bCompensation.oldPos[axis] = _value; // resetting the oldValue with a new one for the next use
   motionBox.setBox(axis, _value);
+  }
+  bToggleOutput(axis, isMoveReallyNeeded || bCompensation.isFirstTime(axis));
   return _value;
+}
+
+
+function bToggleOutput(axis, state) {
+  if (state) {
+    switch (axis) {
+      case 0:
+        xOutput.enable();
+        break;
+      case 1:
+        yOutput.enable();
+        break;
+      case 2:
+        zOutput.enable();
+        break;
+    }
+  } else {
+    switch (axis) {
+      case 0:
+        xOutput.disable();
+        break;
+      case 1:
+        yOutput.disable();
+        break;
+      case 2:
+        zOutput.disable();
+        break;
+    }
+  }
 }
 
 function getBacklashCompensationValue(axis, newPos, oldPos) {
@@ -1850,8 +1886,6 @@ function getBacklashCompensationValue(axis, newPos, oldPos) {
   if (compFlag) { // if compesation is available in this particular axis
     var thisDirection = (oldPos<newPos ? "up" : "down");
     if (thisDirection != bCompensation.lastDir[axis]) {
-      // writeln("; last moves: X: "+bCompensation.lastDir[0]+"/ Y: "+bCompensation.lastDir[1]+"/ Z: "+bCompensation.lastDir[2]);
-      // writeln("; this "+axis+": "+thisDirection);
       if (bCompensation.lastDir[axis] == "none") {
         // first move? right? Set this as the previous for the next calculation and return without compensation
         bCompensation.lastDir[axis] = thisDirection;
