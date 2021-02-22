@@ -31,7 +31,7 @@ maximumCircularSweep = toRad(180);
 allowHelicalMoves = true;
 
 let groupNames = [
-  "7- Unsupported or Future Development",  // was "1- Operation Type"
+  "8- Unsupported or Future Development",  // was "1- Operation Type"
   "1- Workspace",
   "2- Multi-Tools",
   "3- Probes",
