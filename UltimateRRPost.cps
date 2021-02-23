@@ -152,7 +152,7 @@ propertyDefinitions = {
       type: "integer"
     },
     beepOn : {
-      title: "Audibe signal when operator's attention needed",
+      title: "Audible signal when operator's attention needed",
       description: "Makes a beep when attention required",
       group: groupNames[1],
       type: "boolean"
