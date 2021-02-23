@@ -1,6 +1,7 @@
 # UltimateRepRapPost
 The ULTIMATE Duet3D RepRap CNC Post-Processor for Autodesk Fusion 360
 
+<img src="https://i.ibb.co/4Zbxk3g/Ultimate-Post-Processor-Banner.jpg" alt="Ultimate-Post-Processor-Banner" style="width: 100% !important;" border="0">
 <b>Post Properties</b>
 
 Post properties are decided into logical sections, each controlling a specific aspect of the output
