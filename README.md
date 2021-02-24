@@ -1,10 +1,11 @@
 <h2>UltimateRepRapPost</h2>
 <h1>The ULTIMATE Duet3D RepRap CNC Post-Processor for Autodesk Fusion 360</h1>
+<h2 style="color: gold;">With Linear Backlash Compensation, support for multi-tool, inline probe and more</h2>
 
 <img src="https://i.ibb.co/4Zbxk3g/Ultimate-Post-Processor-Banner.jpg" alt="Ultimate-Post-Processor-Banner" style="width: 100% !important;" border="0">
 <b>Post Properties</b>
 
-Post properties are decided into logical sections, each controlling a specific aspect of the output
+Post properties are divided into logical sections, each controlling a specific aspect of the output
 
 <ol>
   <li><b>Work Space</b>
@@ -43,14 +44,12 @@ Post properties are decided into logical sections, each controlling a specific a
        <br>Homes all axis after tool is changed and before it is potentailly probed
        <p> </p>
      </li>
-
    <li><i>Manual tool change</i>
      <br>If checked, manual tool change procedure will be preformed as needed. The spindle stops and the machine waits and asks for the tool to be replaced, and the program is interrupted until tool change is confirmed for the operators safety. The machine will only resume after operator connfirms the new tool is secured and after a 3 seconds back up time. Then the tool will retrun to where it was last and spindle restarts. If other operation such as Z-Probe where requested on tool change, they will be preformed before the spindle restart.
      <br>During the tool change the WCS 0,0,0 and all other parameters are reseverd and new tool diameter will be taken into consideration for continues flawless machining.
      <br><i><b>Note: </b>In an unlikely event if accidentally confirmed the tool is changed while still dealing with the spindle, let go of the spindle as soon as it starts to move back to it's position and while the spindle motor is still off, and preform Emergency Stop.
      <p> </p>
    </li>
-
    <li><i>Probe Tool on each tool change</i>
      <br>Preforms probe after every tool change. There are three probing options available:
       <ul>
@@ -66,7 +65,6 @@ Post properties are decided into logical sections, each controlling a specific a
       </ul>
      <p> </p>
    </li>
-
    <li><i>X for Tool Change [ignored if WCS9 is used]</i></li>
    <li><i>Y for Tool Change [ignored if WCS9 is used]</i></li>
    <li><i>Z for Tool Change [ignored if WCS9 is used]</i>
@@ -82,16 +80,68 @@ Post properties are decided into logical sections, each controlling a specific a
      <p> </p>
     </li>
     <li><i>Use WCS9 Home as tool change position</i>
-      <br>Check this to use your pre-defined 0,0,0 position you have saved in WCS9 for tool change. 
+      <br>Check this to use your pre-defined 0,0,0 position you have saved in WCS9 for tool change.
       <br><b>Note:</b> Uncheking this will result for the WCS9 values to be overwritten by above XYZ Tool Change position values. Please see above for more information.
       <p> </p>
     </li>
-      
-
-
-   
   </ul>
+  <li><b>Probes</b>
+    <ul>
+      <li><i>Z-Probe thickness</i>
+        <br>Thickness of the Z-Probe (Z-probe stick out on the top of stock). This is the amounnt in millimeter that goes above the stock that the probe (tool) touches. The touching point is Z=0+(probe thickness)
+        <p> </p>
+      </li>
+      <li><i>Corner Probe Length (X dimension)</i></li>
+      <li><i>Corner Probe Length (Y dimension)</i>
+        <br>How far the corner probe sticks out off the stock side in X axis and Y axis in millimeter
+        <p> </p>
+      </li>
+      <li><i>Corner Probe thickness</i>
+        <br>Similar to Z-Probe thickness but for the corner probe. See above
+        <p> </p>
+      </li>
+      <li><i>Safe Distance to retract after probe</i>
+        <br>How far the probe can safely retract in all 3 directions to release the probe
+        <p> </p>
+      </li>
+      <li><i>Safe Distance to retract after Z-probe</i>
+        <br>How far in Z axis the probe can safely retract to release the Z-probe
+        <p> </p>
+      </li>
+    </ul>
+    <li><b>Linear Backlash Compensation</b>
+      <p>
+        <b>How does it work?</b>
+        <br>Direction change backlash occurs when the machine mechanically falls short in moving the head to the requeted amount as the direction of the motion changes, but it carries on moving the head correctly for the next move if it happens to be in the same direction. For example if the machine is moving towards Y+ (or holding right after a  move towards Y+) and the nnext command is to move towards the Y- for 5mm, the machine may only move 4.5mm towards Y- instead, but reports 5mm motion to the controller. So, both the controller and Fusion have no idea that there is a 0.5mm shortage of motion and therefore some slight deformity in the output object/cut. This is particulary problematic in repeated back and forth motions.
+        <br>The software can overcome this shortage by boosting these specific moves to the right amount so the head actually moves to the right amount. This will happen by fooling the controller that the requested stop point after a direction change is slightly larger to the specific amount but it keeps Fusion360 to still think it has moved to the desired amount. These adjustments should happen in correct occassions and only when really needed.
+      </p>
+      <p><b>Compensated Tools Motion Box</b>
+        <br>If measured accurately, boosting moves to compensate for the backlash should not impact the shape or dimension of the resulting model. After all, what it should do is to render an even more accurate model. The boosts however will force the controller to feed the motors a few extra steps that in effect will slightly change the readings on the compensated axis without Fusion 360 knowing. If the changes were reported to Fusion 360 it will try to readjust the move back, that change of direction will trigger the compensator again and if Fusion 360 kicks in again to readjust the result will be ann unndesired vibration.
+        <br>What happens after all is that, while the actual moves don't affect the dimension of the cuts, we end up having an slightly enlarged 'reported' tool motion box. This post will print the readjusted tool 'theorical' or 'reported' to controller motion box as comments at the end of the G-Code program it generates. It's always a good idea to take a look at the adjusted motion box report to make sure the machine will not run out of range of its allowable movements in any compensated axis, and if so the stock should be replaced to avoid that.
+        </p>
+        <p><b>How to measure the backlash for this post-Processor<b>
+        <br>Jog an axis to one direction and jog it back 10mm and measure how far short of 10mm the axis has come back. Repeat the same for 1mm and note the offset amounts. We need the offset for both 1mm and 10mm motion after change of direction.
+        </p>
+        <p> </p>
+      <ul>
+        <li><i>Apply Backlash Compensation</i>
+          <br>If unticked the linear backlash compensation will not be caculated or applied.
+        </li>
+        <li><i>X Axis measured backlash for 10mm</i></li>
+        <li><i>X Axis measured backlash for 1mm</i></li>
+        <li><i>Y Axis measured backlash for 10mm</i></li>
+        <li><i>Y Axis measured backlash for 1mm</i></li>
+        <li><i>Z Axis measured backlash for 10mm</i></li>
+        <li><i>Z Axis measured backlash for 1mm</i>
+          <br>Input 2 measured backlash on each axis (the offset for 1mm motion on direction change and for 10mm motion on each axis. Input 0 if there is no backlash on the axis. The numbers should represent how far each mentioned axis is short from the desired amount of motion as described above.
+          <br>
+          <br><b>Note: </b>This in no way is a replacement for adjusting your config.g parameters and/or tuning the hardware to the best of your capability. It's only a final resort to overcome backlash.
+      </li>
+      </ul>
 
-  </li>
+
+
+
+
 </ol>
 ... to be completed
