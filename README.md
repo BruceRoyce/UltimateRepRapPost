@@ -66,6 +66,29 @@ Post properties are decided into logical sections, each controlling a specific a
       </ul>
      <p> </p>
    </li>
+
+   <li><i>X for Tool Change [ignored if WCS9 is used]</i></li>
+   <li><i>Y for Tool Change [ignored if WCS9 is used]</i></li>
+   <li><i>Z for Tool Change [ignored if WCS9 is used]</i>
+     <br>These are absolute X, Y and Z position suitable for tool change. If manual tool change is selected, the Spindle will be turned off and moved to this position and stays there for the tool to be changed. The spinndle will then returns to the exact location before tool change annd carryies on.
+     <br>If probe after tool change is selected, the program pauses and an on screen messages appears to let you mount the probe before requested probe to be preformed, after the probe, the program pauses with anothe on screen message to allow you to remove probe before resuming machining.
+     <br>On moving to the tool change position, and in order to minimize the risk of collision, the spindle moves a dog leg in this order:
+     <br>Move to specified Z
+     <br>Move to specified X
+     <br>and finally move to specified Y
+     <br>Similar move sequences are used for the spindle to go back and to probe
+     <br><b>Note1:</b> If you choose the WCS9 Home to be used for tool change, these XYZ values are ignored and WCS9 will be used instead.
+     <br><b>Note2:</b> If you choose specify XYZ for tool change instead of using WCS9, the WCS9 Home will be updated with specified values in the Post
+     <p> </p>
+    </li>
+    <li><i>Use WCS9 Home as tool change position</i>
+      <br>Check this to use your pre-defined 0,0,0 position you have saved in WCS9 for tool change. 
+      <br><b>Note:</b> Uncheking this will result for the WCS9 values to be overwritten by above XYZ Tool Change position values. Please see above for more information.
+      <p> </p>
+    </li>
+      
+
+
    
   </ul>
 
