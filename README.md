@@ -50,6 +50,23 @@ Post properties are decided into logical sections, each controlling a specific a
      <br><i><b>Note: </b>In an unlikely event if accidentally confirmed the tool is changed while still dealing with the spindle, let go of the spindle as soon as it starts to move back to it's position and while the spindle motor is still off, and preform Emergency Stop.
      <p> </p>
    </li>
+
+   <li><i>Probe Tool on each tool change</i>
+     <br>Preforms probe after every tool change. There are three probing options available:
+      <ul>
+        <li>No probe
+          <br>No probing to undertake after tool changes
+        </li>
+        <li>Z-probe
+          <br>Preforms Z-probe after tool changes. Z-Probe thickness will be taken from <i>Probes</i> section below
+        </li>
+        <li>Corner Probe
+          <br>Preforms corner after tool changes. Corner Probe dimensionns will be taken from <i>Probes</i> section below
+        </li>
+      </ul>
+     <p> </p>
+   </li>
+   
   </ul>
 
   </li>
