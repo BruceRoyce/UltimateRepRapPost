@@ -439,6 +439,15 @@ var motionBox = {
     return boxText;
   }
 }
+var bTool = {
+  name: "",
+  rpm: 0,
+  dir: 3,
+  lastRpm: 0,
+  lastDir: 3,
+  diameter: 0,
+  flute: 0
+}
 var permittedCommentChars = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,=_->";
 var nFormat = createFormat({ prefix: "N", decimals: 0 });
 var gFormat = createFormat({ prefix: "G", decimals: 1 });
@@ -929,10 +938,30 @@ function onSection() {
     }
   }
 
+// rpm change and spindle catchup handeler
+// my strategy is to always output M3/M4 with S(rpm) parameter indicated even if its unchanged
   isRpmChanged = ((rpmFormat.areDifferent(tool.spindleRPM, sOutput.getCurrent())) ||  (tool.clockwise != getPreviousSection().getTool().clockwise));
-  if (true) {
-    // was (insertToolCall || isFirstSection() || isRpmChanged)
-    // Bruce added "true" to always get the RPM
+  var bRprmChangeCheck = false;
+  var catchupTimeMultiplier = 1;
+  // series of checks to determine spindle state
+  bTool.dir = (tool.clockwise ? 3 : 4); // determines current direction
+  if ((insertToolCall || isFirstSection() || isRpmChanged)) bRprmChangeCheck = true;
+  if (bTool.lastRpm == tool.spindleRPM && bTool.lastDir == bTool.dir) {
+    bRprmChangeCheck = false;
+    // no change in rpm or direction
+  } else {
+    bRprmChangeCheck = true;
+    // either direction or rpm is changed
+    if (bTool.lastDir != bTool.dir && bTool.lastRpm != 0) {
+      // updating last direction recodr for the next use
+      bTool.lastDir = bTool.dir;
+      // since the spindle direction is changed the catchup time is doubled
+      catchupTimeMultiplier = 2;
+    }
+  }
+  if (bRprmChangeCheck) {
+    // this block runs only if a change is detected
+    // checking rpm validity
     if (tool.spindleRPM < 1) {
       error(localize("Spindle speed out of range."));
       return;
@@ -940,45 +969,55 @@ function onSection() {
     if (tool.spindleRPM > 99999) {
       warning(localize("Spindle speed exceeds maximum value."));
     }
+    // if we are here change is accepted to go ahead
+
+    // determing if we are tapping so no catchup in that case
     var tapping = hasParameter("operation:cycleType") &&
       ((getParameter("operation:cycleType") == "tapping") ||
         (getParameter("operation:cycleType") == "right-tapping") ||
         (getParameter("operation:cycleType") == "left-tapping") ||
         (getParameter("operation:cycleType") == "tapping-with-chip-breaking"));
-    if (!tapping || (tapping && !(properties.useRigidTapping == "without"))) {
-      var bruceDwellMSec = tool.spindleRPM * Number(properties.spindleRPMCatchupTime6K) / 6000; //2.5 for my machine
-      var toMilli = 1000;
-      // always outout spindle speed after tool change
-      writeBlock(
-        mFormat.format(tool.clockwise ? 3 : 4), "S"+parseInt(tool.spindleRPM)
-      );
-      // dwell for spindle rpm to settle (30Second for each 12000rpm - Min 5 sec)
-      // but only dwell if RPM or direction is changed
-      if (isRpmChanged) {
-        writeComment("LOGGING-> Dwelling for Spindle RPM change to catchup");
-        bDialog("Dwelling for "+bruceDwellMSec+" seconds, for the spindle RPM to catch up", "Dwelling "+programName, 100+bruceDwellMSec, false)
-        if (properties.dwellInSeconds) {
-          toMilli = 1000;
-        } else {
-          toMilli = 1;
-        }
-        if (bruceDwellMSec < 5) {
-          bruceDwellMSec = 5;
-        }
-        if (bruceDwellMSec > 20) {
-          while (bruceDwellMSec > 15) {
-              onDwell(15*toMilli);
-              writeBlock("M450 ;LOGGING-> Here used as a harmless stalling command that reports status");
-              bruceDwellMSec = parseInt(Number(bruceDwellMSec)-15);
+        if (!tapping || (tapping && !(properties.useRigidTapping == "without"))) {
+          // either not tapping or tapping with options`
+          // output spindle + speed command (ie M3 S10000)
+          writeBlock(mFormat.format(bTool.dir), "S"+parseInt(tool.spindleRPM));
+          // handelling dwell for catchup
+          // dwell for spindle rpm to settle (30Second for each 12000rpm - Min 5 sec)
+          // but only dwell if RPM or direction is changed
+          if (parseInt(bTool.lastRpm) != parseInt(tool.spindleRPM)) {
+            // rpms are different
+            var rpmDiff = parseInt(Math.abs(bTool.lastRpm - tool.spindleRPM));
+            // updating the last rpm value for the next use
+            bTool.lastRpm = parseInt(tool.spindleRPM);
+            // calculating required dwell duration
+            var bruceDwellSec = secFormat.format(rpmDiff * Number(properties.spindleRPMCatchupTime6K) / 6000);
+            bruceDwellSec *= catchupTimeMultiplier;
+            var toMilli = 1;
+            if (properties.dwellInSeconds) {
+              // system is set to milliseconds
+              toMilli = 1000;
+            } else {
+              toMilli = 1;
+            }
+            if (bruceDwellSec < 5) {
+              bruceDwellSec = 5;
+            }
+            writeComment("LOGGING-> Dwelling for Spindle RPM change to catchup");
+            bDialog("Dwelling for "+bruceDwellSec+" seconds, for the spindle RPM to catch up", "Dwelling "+programName, 100+bruceDwellSec, false);
+            // breaking dwell in smaller chunks if longer than 20 seconds to keep RepRap happy :)
+            if (bruceDwellSec > 20) {
+              while (bruceDwellSec > 15) {
+                  onDwell(15*toMilli);
+                  writeBlock("M450 ;LOGGING-> Here used as a harmless stalling command that reports status");
+                  bruceDwellSec = parseInt(Number(bruceDwellSec)-15);
+              }
+            }
+            if (parseInt(bruceDwellSec) > 1) {
+                onDwell(bruceDwellSec*toMilli);
+            }
           }
-        }
-        if (parseInt(bruceDwellMSec) > 1) {
-            onDwell(bruceDwellMSec*toMilli);
-        }
-      } // if RPM or Dir was changed
-
-    } // if not tapping
-  } // if tool called
+        } // if not tapping
+  } // bRprmChangeCheck
 
   // getting wcs
   if (insertToolCall) { // force work offset when changing tool
