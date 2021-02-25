@@ -1,11 +1,11 @@
 /**
   Copyright (C) 2012-2018 by Autodesk, Inc.
-  Copyright (C) 2020 by Bruce Royce
+  Copyright (C) 2021 by Bruce Royce
   All rights reserved.
 
 
-  $Revision: 41981 b469d519b41034f7622245f52b01f620c0e5ec7e $
-  $Date: 2021-02-25 03:26:58 $
+  $R 1.01 $
+  $Date: 2021-02-25 14:51:20 $
 
   FORKID {A4D747BD-FEEF-4CE2-86CD-0D56966792FA}
 */
@@ -88,7 +88,8 @@ properties = {
   measuredBacklashYFor10mm:0, // in millimetre
   measuredBacklashZFor1mm:0, // in millimetre
   measuredBacklashZFor10mm:0, // in millimetre
-  spindleRPMCatchupTime6K: 15, // in seconds
+  emptyAccumulatedCompensationError: false,
+  spindleRPMCatchupTime6K: 15 // in seconds
 };
 
 // user-defined property definitions
@@ -347,6 +348,12 @@ propertyDefinitions = {
     group: groupNames[8],
     type: "number"
   },
+  emptyAccumulatedCompensationError: {
+    title: "Flush accumulated Compensation error on start of each operation",
+    description: "Flushes accumulated Compensation error on start of each operation by restarting from WCS",
+    group: groupNames[8],
+    type: "boolean"
+  },
   spindleRPMCatchupTime6K: {
     title: "Spindle RPM catch up time for 6K (in sec.)",
     description: "How many seconds does the Spindle motor need to catch up from 0 to 6000. Determines time needed for all other speeds as well. For example if catch-up time for 6000 (6K) is 15 seconds, it will be 30 seconds for 12000 and 7.5 for 3000 and so forth.",
@@ -387,6 +394,7 @@ var bCompensation = {
   firstTime: [true, true, true], // for x, y, z
   firstMove: [true, true, true],
   lastRequestedPosition: [0, 0, 0],
+  lastFeed: 0,
   oldPos: [0, 0, 0],
   lastDir: ["none", "none", "none"],
   axis: "none",
@@ -865,6 +873,10 @@ function onSection() {
       bDialog ("Now operating: "+comment , "CURRENT OPERATION", 0, false)
       writeComment("TITLE-> Operation "+ comment+"");
     }
+  }
+  if (properties.emptyAccumulatedCompensationError && !insertToolCall) {
+    // restart each operationn from WCS to reduce the risk of accumulation
+    bFlushAccumulatedCompensationError();
   }
 
   if (insertToolCall) {
@@ -1943,3 +1955,24 @@ function getBacklashCompensationValue(axis, newPos, oldPos) {
   } // compensation is available ends
   else {return 0;} // if we're here it means the compesation was not available for the axis
 } // function
+
+function bFlushAccumulatedCompensationError() {
+  bDialog("Flushing Accumulated Compensation Errors", "WAIT!", 123, false);
+  writeBlock(
+    "G1"
+    +" X"+bCompensation.lastRequestedPosition[0]
+    +" Y"+bCompensation.lastRequestedPosition[1]
+    +" Z"+bCompensation.lastRequestedPosition[2]);
+  writeBlock("G60 S0");
+  writeBlock("G1 H1 Z50");
+  writeBlock("G0 X0 Y0");
+  writeBlock("M400");
+  writeBlock("G1 Z0");
+  if (properties.dwellInSeconds) {
+    onDwell(2);
+  } else {
+    onDwell(2000);
+  }
+  writeBlock("G1 H1 Z50");
+  writeBlock("G0 R0 X0 Y0 Z0");
+}
