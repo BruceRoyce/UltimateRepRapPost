@@ -7,6 +7,11 @@
 
 Post properties are divided into logical sections, each controlling a specific aspect of the output
 
+Updates:
+- *Flush Accumulated Compensation Error* option added for Linear Backlash Compensation
+- Spindle RPM Catch up dwell handling bug fixed
+- Linear Backlash Compensation improved
+
 <ol>
   <li><b>Work Space</b>
       <ul>
@@ -126,6 +131,9 @@ Post properties are divided into logical sections, each controlling a specific a
       <ul>
         <li><i>Apply Backlash Compensation</i>
           <br>If unticked the linear backlash compensation will not be caculated or applied.
+        </li>
+        <li><i>Flush Accumulated Compensation Error</i>
+          <br>When checked, it resets the tool position to WCS home before each operation and starts with a clean slate for that operation. This in effect reduces the risk of errors or offsets accumulations which could be a result of hundereds of back and forth motions in preforming every operation
         </li>
         <li><i>X Axis measured backlash for 10mm</i></li>
         <li><i>X Axis measured backlash for 1mm</i></li>
