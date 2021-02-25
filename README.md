@@ -52,7 +52,7 @@ Updates:
    <li><i>Manual tool change</i>
      <br>If checked, manual tool change procedure will be preformed as needed. The spindle stops and the machine waits and asks for the tool to be replaced, and the program is interrupted until tool change is confirmed for the operators safety. The machine will only resume after operator connfirms the new tool is secured and after a 3 seconds back up time. Then the tool will retrun to where it was last and spindle restarts. If other operation such as Z-Probe where requested on tool change, they will be preformed before the spindle restart.
      <br>During the tool change the WCS 0,0,0 and all other parameters are reseverd and new tool diameter will be taken into consideration for continues flawless machining.
-     <br><i><b>Note: </b>In an unlikely event if accidentally confirmed the tool is changed while still dealing with the spindle, let go of the spindle as soon as it starts to move back to it's position and while the spindle motor is still off, and preform Emergency Stop.
+     <br><i><b>Note: </b></i>In an unlikely event if accidentally confirmed the tool is changed while still dealing with the spindle, let go of the spindle as soon as it starts to move back to it's position and while the spindle motor is still off, and preform Emergency Stop.
      <p> </p>
    </li>
    <li><i>Probe Tool on each tool change</i>
