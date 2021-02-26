@@ -4,8 +4,8 @@
   All rights reserved.
 
 
-  $R 1.01 $
-  $Date: 2021-02-25 14:51:20 $
+  $R 1.02 $
+  $Date: 2021-02-27 12:23:16 $
 
   FORKID {A4D747BD-FEEF-4CE2-86CD-0D56966792FA}
 */
@@ -89,6 +89,7 @@ properties = {
   measuredBacklashZFor1mm:0, // in millimetre
   measuredBacklashZFor10mm:0, // in millimetre
   emptyAccumulatedCompensationError: false,
+  bCompensationCount: 0,
   spindleRPMCatchupTime6K: 15 // in seconds
 };
 
@@ -354,6 +355,17 @@ propertyDefinitions = {
     group: groupNames[8],
     type: "boolean"
   },
+  bCompensationCount: {
+    title: "Flush accumulated compensation on interval",
+    description: "Flush accumulated compensation on interval",
+    group: groupNames[8],
+    type: "enum",
+    values: [
+      {title: "None", id: "0"},
+      {title: "Every 500 moves", id: "500"},
+      {title: "Every 1000 moves", id: "1000"}
+    ]
+  },
   spindleRPMCatchupTime6K: {
     title: "Spindle RPM catch up time for 6K (in sec.)",
     description: "How many seconds does the Spindle motor need to catch up from 0 to 6000. Determines time needed for all other speeds as well. For example if catch-up time for 6000 (6K) is 15 seconds, it will be 30 seconds for 12000 and 7.5 for 3000 and so forth.",
@@ -420,7 +432,8 @@ var bCompensation = {
     },
   z : function() {
       return (this.z1 >0 || this.z10>0);
-    }
+    },
+ motionCounter: 0
 };
 var motionBox = {
   // x:[0,0], // min, max
@@ -1138,6 +1151,7 @@ function onRapid(_x, _y, _z) {
   // var x = xOutput.format(_x);
   // var y = yOutput.format(_y);
   // var z = zOutput.format(_z);
+  bflushAcCompErPerMotionCount();
   var x = xOutput.format(axialBacklashCompensation(0,_x));
   var y = yOutput.format(axialBacklashCompensation(1,_y));
   var z = zOutput.format(axialBacklashCompensation(2,_z));
@@ -1152,11 +1166,10 @@ function onRapid(_x, _y, _z) {
 }
 
 function onLinear(_x, _y, _z, feed) {
-
   // var x = xOutput.format(_x);
   // var y = yOutput.format(_y);
   // var z = zOutput.format(_z);
-
+  bflushAcCompErPerMotionCount();
   var x = xOutput.format(axialBacklashCompensation(0,_x));
   var y = yOutput.format(axialBacklashCompensation(1,_y));
   var z = zOutput.format(axialBacklashCompensation(2,_z));
@@ -1844,6 +1857,17 @@ function setupBacklashCompensation() {
   bCompensation.x10 = Number(properties.measuredBacklashXFor10mm);
   bCompensation.y10 = Number(properties.measuredBacklashYFor10mm);
   bCompensation.z10 = Number(properties.measuredBacklashZFor10mm);
+  if (
+    bCompensation.x1 > 1.5 ||
+    bCompensation.x10 > 2.5 ||
+    bCompensation.y1 > 1.5 ||
+    bCompensation.y10 > 1.5 ||
+    bCompensation.z1 > 1.5 ||
+    bCompensation.z10 > 2.5
+  ) {
+    error("Backlash is too large, you'll be better of cutting with a wooden knife than this CNC machine");
+  }
+  // bCompensation.motionCounter = Number(properties.bCompensationCount);
   if (properties.applyBacklashCompensation) {
     writeln ("; ------------------------------------------------------------")
     writeln ("; Backlash compensation on motor direction changes are applied");
@@ -1956,15 +1980,22 @@ function getBacklashCompensationValue(axis, newPos, oldPos) {
   else {return 0;} // if we're here it means the compesation was not available for the axis
 } // function
 
+
+function bflushAcCompErPerMotionCount() {
+  bCompensation.motionCounter +=1;
+  if (Number(properties.bCompensationCount) != 0 && bCompensation.motionCounter >= Number(properties.bCompensationCount)) {
+    bCompensation.motionCounter = 0;
+    writeComment("Intermediate Compensation Flush");
+    bFlushAccumulatedCompensationError();
+    return true;
+  }
+  return false;
+}
+
 function bFlushAccumulatedCompensationError() {
-  bDialog("Flushing Accumulated Compensation Errors", "WAIT!", 123, false);
-  writeBlock(
-    "G1"
-    +" X"+bCompensation.lastRequestedPosition[0]
-    +" Y"+bCompensation.lastRequestedPosition[1]
-    +" Z"+bCompensation.lastRequestedPosition[2]);
-  writeBlock("G60 S0");
-  writeBlock("G1 H1 Z50");
+  bDialog("Flushing Accumulated Compensation", "WAIT!", 123, false);
+  writeBlock("G1 H1 Z500");
+  writeBlock("M400");
   writeBlock("G0 X0 Y0");
   writeBlock("M400");
   writeBlock("G1 Z0");
@@ -1973,6 +2004,13 @@ function bFlushAccumulatedCompensationError() {
   } else {
     onDwell(2000);
   }
-  writeBlock("G1 H1 Z50");
-  writeBlock("G0 R0 X0 Y0 Z0");
+  writeBlock("G1 H1 Z500");
+  writeBlock(
+    "G0"
+    +" X"+bCompensation.lastRequestedPosition[0]
+    +" Y"+bCompensation.lastRequestedPosition[1]
+    );
+  writeBlock("M400");
+  writeBlock("G1 Z"+bCompensation.lastRequestedPosition[2]);
+  bCompensation.oldPos = bCompensation.lastRequestedPosition;
 }
