@@ -8,9 +8,10 @@
 Post properties are divided into logical sections, each controlling a specific aspect of the output
 
 Updates:
-- *Flush Accumulated Compensation Error* option added for Linear Backlash Compensation
-- Spindle RPM Catch up dwell handling bug fixed
-- Linear Backlash Compensation improved
+- Added: *Flush Accumulated Compensation Error* option for Linear Backlash Compensation
+- Bug fix: Spindle RPM Catch up dwell handling
+- Improved: Linear Backlash Compensation
+- Added: Flush Accumulated Compensation Interval option for Linnear Backlash Compensation
 
 <ol>
   <li><b>Work Space</b>
