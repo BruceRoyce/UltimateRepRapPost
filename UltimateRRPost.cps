@@ -4,8 +4,8 @@
   All rights reserved.
 
 
-  $R 1.02 $
-  $Date: 2021-02-27 12:23:16 $
+  $R 1.01 $
+  $Date: 2021-02-25 14:51:20 $
 
   FORKID {A4D747BD-FEEF-4CE2-86CD-0D56966792FA}
 */
@@ -1865,7 +1865,7 @@ function setupBacklashCompensation() {
     bCompensation.z1 > 1.5 ||
     bCompensation.z10 > 2.5
   ) {
-    error("Backlash is too large, you'll be better of cutting with a wooden knife than this CNC machine");
+    error("Backlash is too large, you'll be better off cutting with a wooden knife than this CNC machine");
   }
   // bCompensation.motionCounter = Number(properties.bCompensationCount);
   if (properties.applyBacklashCompensation) {
@@ -2000,9 +2000,9 @@ function bFlushAccumulatedCompensationError() {
   writeBlock("M400");
   writeBlock("G1 Z0");
   if (properties.dwellInSeconds) {
-    onDwell(2);
-  } else {
     onDwell(2000);
+  } else {
+    onDwell(2);
   }
   writeBlock("G1 H1 Z500");
   writeBlock(
