@@ -136,6 +136,14 @@ Updates:
         <li><i>Flush Accumulated Compensation Error</i>
           <br>When checked, it resets the tool position to WCS home before each operation and starts with a clean slate for that operation. This in effect reduces the risk of errors or offsets accumulations which could be a result of hundereds of back and forth motions in preforming every operation
         </li>
+        <li><i>Flush Accumulated Compensation on Interval</i>
+          <br>When checked, it preforms the flushing routine (as above) on specific intervals of:
+          <ul>
+            <li>None</li>
+            <li>Every 500 moves</li>
+            <li>Every 1000 moves</li>
+          </ul>
+        </li>
         <li><i>X Axis measured backlash for 10mm</i></li>
         <li><i>X Axis measured backlash for 1mm</i></li>
         <li><i>Y Axis measured backlash for 10mm</i></li>
