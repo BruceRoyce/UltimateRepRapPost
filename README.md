@@ -69,7 +69,7 @@ Updates:
           <br>Preforms corner after tool changes. Corner Probe dimensionns will be taken from <i>Probes</i> section below
         </li>
       </ul>
-     <p> </p>
+     <p> Some adjustments go here</p>
    </li>
    <li><i>X for Tool Change [ignored if WCS9 is used]</i></li>
    <li><i>Y for Tool Change [ignored if WCS9 is used]</i></li>
