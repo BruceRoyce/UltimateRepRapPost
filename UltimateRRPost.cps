@@ -82,12 +82,16 @@ properties = {
   useM6: false, // disable to avoid M6 output - preload is also disabled when M6 is disabled
   preloadTool: false, // (Unsupported)preloads next tool on tool change if any
   applyBacklashCompensation: true,
+  backlashCompensationMethod: "steps",
   measuredBacklashXFor1mm:0, // in millimetre
   measuredBacklashXFor10mm:0, // in millimetre
   measuredBacklashYFor1mm:0, // in millimetre
   measuredBacklashYFor10mm:0, // in millimetre
   measuredBacklashZFor1mm:0, // in millimetre
   measuredBacklashZFor10mm:0, // in millimetre
+  stepsPerUnitX: 400,
+  stepsPerUnitY: 400,
+  stepsPerUnitZ: 400,
   emptyAccumulatedCompensationError: false,
   bCompensationCount: 0,
   spindleRPMCatchupTime6K: 15 // in seconds
@@ -313,6 +317,34 @@ propertyDefinitions = {
     group: groupNames[8],
     type: "boolean"
   },
+  backlashCompensationMethod:{
+    title: "Backlash Compensation Method",
+    description: "Choose the desired methods to compensate for the backlash: Steps or Distance. Steps method (preferred) compensates with calculating and adding extra steps needed to compensate without modifying the motion distance. This preseves the tool coordinate as created by CAM. Distance methods calculates and adds slightly extra distance to affected motions to compensate for the backlash, without altering the steps. Distance method if for occassions that you don't know the Step Per Unit (set by M92) configuratin.",
+    group: groupNames[8],
+    type: "enum",
+    values: [
+      { title: "Adding to Steps", id: "steps"},
+      { title: "Adding to Distance", id: "distance"}
+    ]
+  },
+  stepsPerUnitX: {
+    title: "X Axis Steps Per Unit [Only for Steps Method]",
+    description: "Get this from M92 X command in config.g ",
+    group: groupNames [8],
+    type: "number"
+  },
+  stepsPerUnitY: {
+    title: "Y Axis Steps Per Unit [Only for Steps Method]",
+    description: "Get this from M92 Y command in config.g ",
+    group: groupNames [8],
+    type: "number"
+  },
+  stepsPerUnitZ: {
+    title: "Z Axis Steps Per Unit [Only for Steps Method]",
+    description: "Get this from M92 Z command in config.g ",
+    group: groupNames [8],
+    type: "number"
+  },
   measuredBacklashXFor1mm:{
     title: "X axis measured backlash for 1mm",
     description: "The amount of measured error that the backlash causes in 1mm motion on X axis change of direction. In other words how much boost the motion requirs to sit on its intended place on change of direction",
@@ -403,6 +435,8 @@ var bCompensation = {
   x10: Number(properties.measuredBacklashXFor10mm),
   y10: Number(properties.measuredBacklashYFor10mm),
   z10: Number(properties.measuredBacklashZFor10mm),
+  stepsPerUnit: [stepsPerUnitX, stepsPerUnitY, stepsPerUnitZ],
+  lastM92: [stepsPerUnitX, stepsPerUnitY, stepsPerUnitZ],
   firstTime: [true, true, true], // for x, y, z
   firstMove: [true, true, true],
   lastRequestedPosition: [0, 0, 0],
@@ -1857,6 +1891,12 @@ function setupBacklashCompensation() {
   bCompensation.x10 = Number(properties.measuredBacklashXFor10mm);
   bCompensation.y10 = Number(properties.measuredBacklashYFor10mm);
   bCompensation.z10 = Number(properties.measuredBacklashZFor10mm);
+  bCompensation.stepsPerUnit: [
+    Number(stepsPerUnitX),
+    Number(stepsPerUnitY),
+    Number(stepsPerUnitZ)
+  ];
+  bCompensation.lastM92 = bCompensation.stepsPerUnit;
   if (
     bCompensation.x1 > 1.5 ||
     bCompensation.x10 > 2.5 ||
@@ -1874,21 +1914,49 @@ function setupBacklashCompensation() {
     writeln ("; Backlash values on X: " +bCompensation.x1 +"..."+ bCompensation.x10);
     writeln ("; Backlash values on Y: " +bCompensation.y1 +"..."+ bCompensation.y10);
     writeln ("; Backlash values on Z: " +bCompensation.z1 +"..."+ bCompensation.z10);
-    writeln ("; - Check actual tool motion box after compensation at the end of this file")
+    writeln ("; - Check actual tool motion box after compensation at the end of this file");
+    if (backlashCompensationMethod == "steps") {
+      writeln ("; - Compensation by Steps Per Unit adjustments");
+      writeln ("; - Steps Per Unit: M92"
+        + " X"+ bCompensation.stepsPerUnit[0]
+        + " Y" + bCompensation.stepsPerUnit[1]
+        + " Z" + bCompensation.stepsPerUnit[2]
+      );
+    } else {
+      writeln ("; - Compensation by Motion Distance adjustments");
+    }
     writeln ("; ------------------------------------------------------------")
   }
 }
 
 function axialBacklashCompensation(axis,_value) {
+  if (backlashCompensationMethod == "distance") {
+    return axialBacklashCompensationByDistance(axis,_value);
+  } else {
+    return axialBacklashCompensationBySteps (axis, _value);
+  }
+}
+
+function axialBacklashCompensationBySteps (axis, _value) {
+  let compensationDistanceDiff;
+  var axisLetter = ["X", "Y", "Z"];
+  compensationDistanceDiff = axialBacklashCompensationByDistance(axis,_value) - _value;
+  if (isMoveReallyNeeded(axis,_value)) {
+    let compensatedNumberOfSteps = (bCompensation.stepsPerUnit[axis] * compensationDistanceDiff) + bCompensation.stepsPerUnit[axis];
+    if (bCompensation.lastM92[axis] != compensatedNumberOfSteps) {
+      writeComment("Adjusting steps/unit");
+      writeBlock("M92 " + axisLetter[axis] + compensatedNumberOfSteps.toString());
+      bCompensation.lastM92[axis] = compensatedNumberOfSteps; // for the next check
+    }
+  }
+  return _value; // _value is unchanged. All we do is adjusting the steps per unit via M92
+}
+
+function axialBacklashCompensationByDistance(axis,_value) {
   if (properties.applyBacklashCompensation) {
     var _holder = _value;
     var axisLetter = ["x", "y", "z"];
-    var isMoveReallyNeeded; // check to see if move really needed
-    if (bCompensation.lastRequestedPosition[axis] == _value) {
-      isMoveReallyNeeded = false;
-    } else {
-      isMoveReallyNeeded = true;
-    }
+    var isMoveReallyNeeded = isMoveReallyNeeded(axis,_value); // check to see if move really needed
     bCompensation.lastRequestedPosition[axis] = _value;
     if (bCompensation.isFirstTime(axis)) {
       bCompensation.oldPos[axis] = _holder;
@@ -1905,6 +1973,13 @@ function axialBacklashCompensation(axis,_value) {
   return _value;
 }
 
+function isMoveReallyNeeded(axis, _value) {
+  if (bCompensation.lastRequestedPosition[axis] == _value) {
+    return false;
+  } else {
+    return true;
+  }
+}
 
 function bToggleOutput(axis, state) {
   if (state) {
