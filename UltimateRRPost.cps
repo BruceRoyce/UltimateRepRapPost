@@ -5,7 +5,7 @@
 
 
   $R 1.01 $
-  $Date: 2021-02-25 14:51:20 $
+  $Date: 2021-03-18 00:58:12 $
 
   FORKID {A4D747BD-FEEF-4CE2-86CD-0D56966792FA}
 */
@@ -1914,7 +1914,6 @@ function setupBacklashCompensation() {
     writeln ("; Backlash values on X: " +bCompensation.x1 +"..."+ bCompensation.x10);
     writeln ("; Backlash values on Y: " +bCompensation.y1 +"..."+ bCompensation.y10);
     writeln ("; Backlash values on Z: " +bCompensation.z1 +"..."+ bCompensation.z10);
-    writeln ("; - Check actual tool motion box after compensation at the end of this file");
     if (backlashCompensationMethod == "steps") {
       writeln ("; - Compensation by Steps Per Unit adjustments");
       writeln ("; - Steps Per Unit: M92"
@@ -1924,6 +1923,7 @@ function setupBacklashCompensation() {
       );
     } else {
       writeln ("; - Compensation by Motion Distance adjustments");
+      writeln ("; - Check actual tool motion box after compensation at the end of this file");
     }
     writeln ("; ------------------------------------------------------------")
   }
@@ -2080,6 +2080,13 @@ function bFlushAccumulatedCompensationError() {
     onDwell(2);
   }
   writeBlock("G1 H1 Z500");
+  if (backlashCompensationMethod == "steps") {
+    writeBlock("M92"
+      + " X" + bCompensation.stepsPerUnit[0]
+      + " Y" + bCompensation.stepsPerUnit[1]
+      + " Z" + bCompensation.stepsPerUnit[2]
+    );
+  }
   writeBlock(
     "G0"
     +" X"+bCompensation.lastRequestedPosition[0]
@@ -2087,5 +2094,5 @@ function bFlushAccumulatedCompensationError() {
     );
   writeBlock("M400");
   writeBlock("G1 Z"+bCompensation.lastRequestedPosition[2]);
-  bCompensation.oldPos = bCompensation.lastRequestedPosition;
+  bCompensation.oldPos = bCompensation.lastRequestedPosition; // copies the entire array
 }
