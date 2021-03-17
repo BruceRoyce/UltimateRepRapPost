@@ -4,20 +4,19 @@
   All rights reserved.
 
 
-  $R 1.01 $
-  $Date: 2021-03-18 00:58:12 $
+  $R 1.5 $
+  $Date: 2021-03-17 20:17:38 $
 
-  FORKID {A4D747BD-FEEF-4CE2-86CD-0D56966792FA}
 */
 
-description = "JINNI Post-Processor - Duet RepRap w/Tool Change";
+description = "JINNI Post for RepRap w/Tool Change & Backlash Compensator";
 vendor = "JINNITECH";
 vendorUrl = "http://www.jinnitech.com";
 legal = "Copyright (C) 2012-2018 by Autodesk, Inc.";
 certificationLevel = 2;
 minimumRevision = 24000;
 
-longDescription = "JINNI's Post-Processor for Duet3D Cntrlr w/ RepRap by Bruce";
+longDescription = "JINNI's Post-Processor for RepRap by Bruce";
 setCodePage("ascii");
 
 capabilities = CAPABILITY_MILLING;
@@ -82,13 +81,14 @@ properties = {
   useM6: false, // disable to avoid M6 output - preload is also disabled when M6 is disabled
   preloadTool: false, // (Unsupported)preloads next tool on tool change if any
   applyBacklashCompensation: true,
-  backlashCompensationMethod: "steps",
   measuredBacklashXFor1mm:0, // in millimetre
   measuredBacklashXFor10mm:0, // in millimetre
   measuredBacklashYFor1mm:0, // in millimetre
   measuredBacklashYFor10mm:0, // in millimetre
   measuredBacklashZFor1mm:0, // in millimetre
   measuredBacklashZFor10mm:0, // in millimetre
+  backlashCompensationMethod: "steps",
+  backlashCompensationTolerance: 0.05,
   stepsPerUnitX: 400,
   stepsPerUnitY: 400,
   stepsPerUnitZ: 400,
@@ -310,22 +310,27 @@ propertyDefinitions = {
       { title: "Without spindle direction", id: "without" }
     ]
   },
-
   applyBacklashCompensation: {
     title: "Apply Backlash Compensation",
     description: "Compensate for backlash in motion motor direction changes",
     group: groupNames[8],
     type: "boolean"
   },
-  backlashCompensationMethod:{
+  backlashCompensationMethod: {
     title: "Backlash Compensation Method",
     description: "Choose the desired methods to compensate for the backlash: Steps or Distance. Steps method (preferred) compensates with calculating and adding extra steps needed to compensate without modifying the motion distance. This preseves the tool coordinate as created by CAM. Distance methods calculates and adds slightly extra distance to affected motions to compensate for the backlash, without altering the steps. Distance method if for occassions that you don't know the Step Per Unit (set by M92) configuratin.",
     group: groupNames[8],
     type: "enum",
     values: [
-      { title: "Adding to Steps", id: "steps"},
-      { title: "Adding to Distance", id: "distance"}
+      { title: "Steps", id: "steps" },
+      { title: "Distance", id: "distance" }
     ]
+  },
+  backlashCompensationTolerance: {
+    title: "Accuracy tolerance",
+    description: "Changes in motion direction for distances below the tolerance threshold won't trigger backlash compensation",
+    group: groupNames[8],
+    type: "number"
   },
   stepsPerUnitX: {
     title: "X Axis Steps Per Unit [Only for Steps Method]",
@@ -435,8 +440,13 @@ var bCompensation = {
   x10: Number(properties.measuredBacklashXFor10mm),
   y10: Number(properties.measuredBacklashYFor10mm),
   z10: Number(properties.measuredBacklashZFor10mm),
-  stepsPerUnit: [stepsPerUnitX, stepsPerUnitY, stepsPerUnitZ],
-  lastM92: [stepsPerUnitX, stepsPerUnitY, stepsPerUnitZ],
+  stepsPerUnit: [
+                 Number(properties.stepsPerUnitX),
+                 Number(properties.stepsPerUnitY),
+                 Number(properties.stepsPerUnitZ)
+                ],
+  tolerance: 0.05,
+  lastM92: [0,0,0],
   firstTime: [true, true, true], // for x, y, z
   firstMove: [true, true, true],
   lastRequestedPosition: [0, 0, 0],
@@ -1043,38 +1053,40 @@ function onSection() {
           // handelling dwell for catchup
           // dwell for spindle rpm to settle (30Second for each 12000rpm - Min 5 sec)
           // but only dwell if RPM or direction is changed
-          if (parseInt(bTool.lastRpm) != parseInt(tool.spindleRPM)) {
-            // rpms are different
-            var rpmDiff = parseInt(Math.abs(bTool.lastRpm - tool.spindleRPM));
-            // updating the last rpm value for the next use
-            bTool.lastRpm = parseInt(tool.spindleRPM);
-            // calculating required dwell duration
-            var bruceDwellSec = secFormat.format(rpmDiff * Number(properties.spindleRPMCatchupTime6K) / 6000);
-            bruceDwellSec *= catchupTimeMultiplier;
-            var toMilli = 1;
-            if (properties.dwellInSeconds) {
-              // system is set to milliseconds
-              toMilli = 1000;
-            } else {
-              toMilli = 1;
-            }
-            if (bruceDwellSec < 5) {
-              bruceDwellSec = 5;
-            }
-            writeComment("LOGGING-> Dwelling for Spindle RPM change to catchup");
-            bDialog("Dwelling for "+bruceDwellSec+" seconds, for the spindle RPM to catch up", "Dwelling "+programName, 100+bruceDwellSec, false);
-            // breaking dwell in smaller chunks if longer than 20 seconds to keep RepRap happy :)
-            if (bruceDwellSec > 20) {
-              while (bruceDwellSec > 15) {
-                  onDwell(15*toMilli);
-                  writeBlock("M450 ;LOGGING-> Here used as a harmless stalling command that reports status");
-                  bruceDwellSec = parseInt(Number(bruceDwellSec)-15);
+          if (tool.spindleRPM != 0) {
+            if (parseInt(bTool.lastRpm) != parseInt(tool.spindleRPM)) {
+              // rpms are different
+              var rpmDiff = parseInt(Math.abs(bTool.lastRpm - tool.spindleRPM));
+              // updating the last rpm value for the next use
+              bTool.lastRpm = parseInt(tool.spindleRPM);
+              // calculating required dwell duration
+              var bruceDwellSec = secFormat.format(rpmDiff * Number(properties.spindleRPMCatchupTime6K) / 6000);
+              bruceDwellSec *= catchupTimeMultiplier;
+              var toMilli = 1;
+              if (properties.dwellInSeconds) {
+                // system is set to milliseconds
+                toMilli = 1000;
+              } else {
+                toMilli = 1;
+              }
+              if (bruceDwellSec < 5) {
+                bruceDwellSec = 5;
+              }
+              writeComment("LOGGING-> Dwelling for Spindle RPM change to catchup");
+              bDialog("Dwelling for "+bruceDwellSec+" seconds, for the spindle RPM to catch up", "Dwelling "+programName, 100+bruceDwellSec, false);
+              // breaking dwell in smaller chunks if longer than 20 seconds to keep RepRap happy :)
+              if (bruceDwellSec > 20) {
+                while (bruceDwellSec > 15) {
+                    onDwell(15*toMilli);
+                    writeBlock("M450 ;LOGGING-> Here used as a harmless stalling command that reports status");
+                    bruceDwellSec = parseInt(Number(bruceDwellSec)-15);
+                }
+              }
+              if (parseInt(bruceDwellSec) > 1) {
+                  onDwell(bruceDwellSec*toMilli);
               }
             }
-            if (parseInt(bruceDwellSec) > 1) {
-                onDwell(bruceDwellSec*toMilli);
-            }
-          }
+          }// If Spindle speed is set to 0 it's probably the end of the programme
         } // if not tapping
   } // bRprmChangeCheck
 
@@ -1182,9 +1194,6 @@ function onRadiusCompensation() {
 }
 
 function onRapid(_x, _y, _z) {
-  // var x = xOutput.format(_x);
-  // var y = yOutput.format(_y);
-  // var z = zOutput.format(_z);
   bflushAcCompErPerMotionCount();
   var x = xOutput.format(axialBacklashCompensation(0,_x));
   var y = yOutput.format(axialBacklashCompensation(1,_y));
@@ -1200,9 +1209,6 @@ function onRapid(_x, _y, _z) {
 }
 
 function onLinear(_x, _y, _z, feed) {
-  // var x = xOutput.format(_x);
-  // var y = yOutput.format(_y);
-  // var z = zOutput.format(_z);
   bflushAcCompErPerMotionCount();
   var x = xOutput.format(axialBacklashCompensation(0,_x));
   var y = yOutput.format(axialBacklashCompensation(1,_y));
@@ -1891,12 +1897,6 @@ function setupBacklashCompensation() {
   bCompensation.x10 = Number(properties.measuredBacklashXFor10mm);
   bCompensation.y10 = Number(properties.measuredBacklashYFor10mm);
   bCompensation.z10 = Number(properties.measuredBacklashZFor10mm);
-  bCompensation.stepsPerUnit: [
-    Number(stepsPerUnitX),
-    Number(stepsPerUnitY),
-    Number(stepsPerUnitZ)
-  ];
-  bCompensation.lastM92 = bCompensation.stepsPerUnit;
   if (
     bCompensation.x1 > 1.5 ||
     bCompensation.x10 > 2.5 ||
@@ -1908,16 +1908,23 @@ function setupBacklashCompensation() {
     error("Backlash is too large, you'll be better off cutting with a wooden knife than this CNC machine");
   }
   // bCompensation.motionCounter = Number(properties.bCompensationCount);
+    bCompensation.stepsPerUnit = [
+      Number(properties.stepsPerUnitX),
+      Number(properties.stepsPerUnitY),
+      Number(properties.stepsPerUnitZ)
+    ];
+  bCompensation.tolerance = properties.backlashCompensationTolerance;
+  bCompensation.lastM92 = bCompensation.stepsPerUnit.slice(); // starting both arrays from the same values
   if (properties.applyBacklashCompensation) {
     writeln ("; ------------------------------------------------------------")
     writeln ("; Backlash compensation on motor direction changes are applied");
     writeln ("; Backlash values on X: " +bCompensation.x1 +"..."+ bCompensation.x10);
     writeln ("; Backlash values on Y: " +bCompensation.y1 +"..."+ bCompensation.y10);
     writeln ("; Backlash values on Z: " +bCompensation.z1 +"..."+ bCompensation.z10);
-    if (backlashCompensationMethod == "steps") {
-      writeln ("; - Compensation by Steps Per Unit adjustments");
-      writeln ("; - Steps Per Unit: M92"
-        + " X"+ bCompensation.stepsPerUnit[0]
+  if (properties.backlashCompensationMethod == "steps") {
+    writeln ("; - Compensation by Steps Per Unit adjustments");
+    writeln ("; - Steps Per Unit: M92"
+        + " X" + bCompensation.stepsPerUnit[0]
         + " Y" + bCompensation.stepsPerUnit[1]
         + " Z" + bCompensation.stepsPerUnit[2]
       );
@@ -1930,46 +1937,68 @@ function setupBacklashCompensation() {
 }
 
 function axialBacklashCompensation(axis,_value) {
-  if (backlashCompensationMethod == "distance") {
-    return axialBacklashCompensationByDistance(axis,_value);
-  } else {
-    return axialBacklashCompensationBySteps (axis, _value);
+  if (properties.applyBacklashCompensation) {
+    if (properties.backlashCompensationMethod == "distance") {
+      return axialBacklashCompensationByDistance(axis,_value);
+    } else {
+      return axialBacklashCompensationBySteps (axis, _value);
+    }
   }
+  return _value;
 }
 
 function axialBacklashCompensationBySteps (axis, _value) {
-  let compensationDistanceDiff;
-  var axisLetter = ["X", "Y", "Z"];
-  compensationDistanceDiff = axialBacklashCompensationByDistance(axis,_value) - _value;
-  if (isMoveReallyNeeded(axis,_value)) {
-    let compensatedNumberOfSteps = (bCompensation.stepsPerUnit[axis] * compensationDistanceDiff) + bCompensation.stepsPerUnit[axis];
-    if (bCompensation.lastM92[axis] != compensatedNumberOfSteps) {
-      writeComment("Adjusting steps/unit");
-      writeBlock("M92 " + axisLetter[axis] + compensatedNumberOfSteps.toString());
-      bCompensation.lastM92[axis] = compensatedNumberOfSteps; // for the next check
-    }
-  }
-  return _value; // _value is unchanged. All we do is adjusting the steps per unit via M92
+    if (!bCompensation.isFirstTime(axis)) {
+      var axisLetter = ["X", "Y", "Z"];
+      if (isMoveReallyNeeded(axis,_value)) {
+          var diff = getBacklashCompensationValue (axis, _value, bCompensation.oldPos[axis])
+          // calculating and setting steps per unit
+          if (diff != 0) {
+            // diff not 0 so we know direction is changed and compensation is available
+            let motionDistance = Math.abs(_value - bCompensation.oldPos[axis]);
+            if (motionDistance != 0 && motionDistance > bCompensation.tolerance) {
+              let compensatedSteps = (motionDistance + Math.abs(diff)) * bCompensation.stepsPerUnit[axis] / motionDistance;
+              if (compensatedSteps != bCompensation.lastM92[axis]) {
+                // setting a new M92 for this move
+                writeBlock("M92 "+axisLetter[axis]+compensatedSteps);
+                bCompensation.lastM92[axis] = compensatedSteps;
+              } // else current M92 is fine
+            }
+          } else {
+            // no direction change has taken place, so we reset steps per unit to usual
+            if (bCompensation.lastM92[axis] != bCompensation.stepsPerUnit[axis]) {
+              // avoid unneccessary M92 output
+              writeBlock("M92 " + axisLetter[axis] + bCompensation.stepsPerUnit[axis]);
+              bCompensation.lastM92[axis] = bCompensation.stepsPerUnit[axis];
+            }
+          }
+        } // no neccessary move - do nothing
+    } // this was the first move in the axis - Original M92 is fine
+  bCompensation.oldPos[axis] = _value; // resetting the oldValue with a new one for the next use
+  bCompensation.lastRequestedPosition[axis] = _value; // updating for the next round
+  motionBox.setBox(axis, _value);
+  return _value;
 }
 
 function axialBacklashCompensationByDistance(axis,_value) {
   if (properties.applyBacklashCompensation) {
     var _holder = _value;
-    var axisLetter = ["x", "y", "z"];
-    var isMoveReallyNeeded = isMoveReallyNeeded(axis,_value); // check to see if move really needed
+    var isThisMoveReallyNeeded = isMoveReallyNeeded(axis,_value); // check to see if move really needed
     bCompensation.lastRequestedPosition[axis] = _value;
     if (bCompensation.isFirstTime(axis)) {
       bCompensation.oldPos[axis] = _holder;
     } else {
-      if (isMoveReallyNeeded) {
+      if (isThisMoveReallyNeeded) {
           var diff = getBacklashCompensationValue (axis, _value, bCompensation.oldPos[axis])
-          _value = _value + diff;
+          if (Math.abs(_value - bCompensation.oldPos[axis]) > bCompensation.tolerance) {
+            _value = _value + diff;
+          }
           bCompensation.oldPos[axis] = _value; // resetting the oldValue with a new one for the next use
         }
     }
   motionBox.setBox(axis, _value);
   }
-  bToggleOutput(axis, isMoveReallyNeeded || bCompensation.isFirstTime(axis));
+  bToggleOutput(axis, isThisMoveReallyNeeded || bCompensation.isFirstTime(axis));
   return _value;
 }
 
@@ -2080,12 +2109,13 @@ function bFlushAccumulatedCompensationError() {
     onDwell(2);
   }
   writeBlock("G1 H1 Z500");
-  if (backlashCompensationMethod == "steps") {
+  if (properties.backlashCompensationMethod == "steps") {
     writeBlock("M92"
       + " X" + bCompensation.stepsPerUnit[0]
       + " Y" + bCompensation.stepsPerUnit[1]
       + " Z" + bCompensation.stepsPerUnit[2]
     );
+    bCompensation.lastM92 = bCompensation.stepsPerUnit.slice(); // resets the entire array
   }
   writeBlock(
     "G0"
