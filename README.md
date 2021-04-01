@@ -1,4 +1,5 @@
 <h2>UltimateRepRapPost</h2>
+<a href="https://github.com/BruceRoyce/UltimateRepRapPost/releases">Latest release is R1.01 with improved compensation with steps. Get it here</a>
 <h1>The ULTIMATE Duet3D RepRap CNC Post-Processor for Autodesk Fusion 360</h1>
 <h2 style="color: gold;">With Linear Backlash Compensation, support for multi-tool, inline probe and more</h2>
 
