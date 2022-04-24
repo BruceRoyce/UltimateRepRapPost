@@ -40,7 +40,7 @@ Updates:
       </li>
 
    <li><i>WCS to be used [If Setup WCS isn't 0, it overrides this]</i>
-        <br>Choose the correct Work Coordinate System that is in use from 8 available slots. The post reserves WCS 9 for manual tool change operations. For the sake of file portability, this setting will be entirely ignored if you have specified WCS in your Fusion360 setup. This ensures that you don't accidentally override the intended WCS choice if you recieved the file from an another place.
+        <br>Choose the correct Work Coordinate System that is in use from 8 available slots. The post reserves WCS 9 for manual tool change operations. For the sake of file portability, this setting will be entirely ignored if you have specified WCS in your Fusion360 setup. This ensures that you don't accidentally override the intended WCS choice if you received the file from an another place.
         <br>If you want the ability to choose your WCS in the post, you should leave the WCS offset on 0 when you setup your model for operations.
         <p> </p>
       </li>
@@ -48,12 +48,12 @@ Updates:
  <li><b>Multi-Tools</b>
    <ul>
      <li><i>Home axis on tool change</i>
-       <br>Homes all axis after tool is changed and before it is potentailly probed
+       <br>Homes all axis after tool is changed and before it is potentially probed
        <p> </p>
      </li>
    <li><i>Manual tool change</i>
-     <br>If checked, manual tool change procedure will be preformed as needed. The spindle stops and the machine waits and asks for the tool to be replaced, and the program is interrupted until tool change is confirmed for the operators safety. The machine will only resume after operator connfirms the new tool is secured and after a 3 seconds back up time. Then the tool will retrun to where it was last and spindle restarts. If other operation such as Z-Probe where requested on tool change, they will be preformed before the spindle restart.
-     <br>During the tool change the WCS 0,0,0 and all other parameters are reseverd and new tool diameter will be taken into consideration for continues flawless machining.
+     <br>If checked, manual tool change procedure will be preformed as needed. The spindle stops and the machine waits and asks for the tool to be replaced, and the program is interrupted until tool change is confirmed for the operators safety. The machine will only resume after operator connfirms the new tool is secured and after a 3 seconds back up time. Then the tool will return to where it was last and spindle restarts. If other operation such as Z-Probe where requested on tool change, they will be preformed before the spindle restart.
+     <br>During the tool change the WCS 0,0,0 and all other parameters are reserved and new tool diameter will be taken into consideration for continues flawless machining.
      <br><i><b>Note: </b></i>In an unlikely event if accidentally confirmed the tool is changed while still dealing with the spindle, let go of the spindle as soon as it starts to move back to it's position and while the spindle motor is still off, and preform Emergency Stop.
      <p> </p>
    </li>
@@ -67,7 +67,7 @@ Updates:
           <br>Preforms Z-probe after tool changes. Z-Probe thickness will be taken from <i>Probes</i> section below
         </li>
         <li>Corner Probe
-          <br>Preforms corner after tool changes. Corner Probe dimensionns will be taken from <i>Probes</i> section below
+          <br>Preforms corner after tool changes. Corner Probe dimensions will be taken from <i>Probes</i> section below
         </li>
       </ul>
      <p> </p>
@@ -75,8 +75,8 @@ Updates:
    <li><i>X for Tool Change [ignored if WCS9 is used]</i></li>
    <li><i>Y for Tool Change [ignored if WCS9 is used]</i></li>
    <li><i>Z for Tool Change [ignored if WCS9 is used]</i>
-     <br>These are absolute X, Y and Z position suitable for tool change. If manual tool change is selected, the Spindle will be turned off and moved to this position and stays there for the tool to be changed. The spinndle will then returns to the exact location before tool change annd carryies on.
-     <br>If probe after tool change is selected, the program pauses and an on screen messages appears to let you mount the probe before requested probe to be preformed, after the probe, the program pauses with anothe on screen message to allow you to remove probe before resuming machining.
+     <br>These are absolute X, Y and Z position suitable for tool change. If manual tool change is selected, the Spindle will be turned off and moved to this position and stays there for the tool to be changed. The spindle will then returns to the exact location before tool change and carries on.
+     <br>If probe after tool change is selected, the program pauses and an on screen messages appears to let you mount the probe before requested probe to be preformed, after the probe, the program pauses with another on screen message to allow you to remove probe before resuming machining.
      <br>On moving to the tool change position, and in order to minimize the risk of collision, the spindle moves a dog leg in this order:
      <br>Move to specified Z
      <br>Move to specified X
@@ -88,19 +88,19 @@ Updates:
     </li>
     <li><i>Use WCS9 Home as tool change position</i>
       <br>Check this to use your pre-defined 0,0,0 position you have saved in WCS9 for tool change.
-      <br><b>Note:</b> Uncheking this will result for the WCS9 values to be overwritten by above XYZ Tool Change position values. Please see above for more information.
+      <br><b>Note:</b> Unchecking this will result for the WCS9 values to be overwritten by above XYZ Tool Change position values. Please see above for more information.
       <p> </p>
     </li>
   </ul>
   <li><b>Probes</b>
     <ul>
       <li><i>Z-Probe thickness</i>
-        <br>Thickness of the Z-Probe (Z-probe stick out on the top of stock). This is the amounnt in millimeter that goes above the stock that the probe (tool) touches. The touching point is Z=0+(probe thickness)
+        <br>Thickness of the Z-Probe (Z-probe stick out on the top of stock). This is the amount in millimetre that goes above the stock that the probe (tool) touches. The touching point is Z=0+(probe thickness)
         <p> </p>
       </li>
       <li><i>Corner Probe Length (X dimension)</i></li>
       <li><i>Corner Probe Length (Y dimension)</i>
-        <br>How far the corner probe sticks out off the stock side in X axis and Y axis in millimeter
+        <br>How far the corner probe sticks out off the stock side in X axis and Y axis in millimetre
         <p> </p>
       </li>
       <li><i>Corner Probe thickness</i>
@@ -119,12 +119,12 @@ Updates:
     <li><b>Linear Backlash Compensation</b>
       <p>
         <b>How does it work?</b>
-        <br>Direction change backlash occurs when the machine mechanically falls short in moving the head to the requeted amount as the direction of the motion changes, but it carries on moving the head correctly for the next move if it happens to be in the same direction. For example if the machine is moving towards Y+ (or holding right after a  move towards Y+) and the nnext command is to move towards the Y- for 5mm, the machine may only move 4.5mm towards Y- instead, but reports 5mm motion to the controller. So, both the controller and Fusion have no idea that there is a 0.5mm shortage of motion and therefore some slight deformity in the output object/cut. This is particulary problematic in repeated back and forth motions.
-        <br>The software can overcome this shortage by boosting these specific moves to the right amount so the head actually moves to the right amount. This will happen by fooling the controller that the requested stop point after a direction change is slightly larger to the specific amount but it keeps Fusion360 to still think it has moved to the desired amount. These adjustments should happen in correct occassions and only when really needed.
+        <br>Direction change backlash occurs when the machine mechanically falls short in moving the head to the requested amount as the direction of the motion changes, but it carries on moving the head correctly for the next move if it happens to be in the same direction. For example if the machine is moving towards Y+ (or holding right after a  move towards Y+) and the next command is to move towards the Y- for 5mm, the machine may only move 4.5mm towards Y- instead, but reports 5mm motion to the controller. So, both the controller and Fusion have no idea that there is a 0.5mm shortage of motion and therefore some slight deformity in the output object/cut. This is particularly problematic in repeated back and forth motions.
+        <br>The software can overcome this shortage by boosting these specific moves to the right amount so the head actually moves to the right amount. This will happen by fooling the controller that the requested stop point after a direction change is slightly larger to the specific amount but it keeps Fusion360 to still think it has moved to the desired amount. These adjustments should happen in correct occasions and only when really needed.
       </p>
       <p><b>Compensated Tools Motion Box</b>
-        <br>If measured accurately, boosting moves to compensate for the backlash should not impact the shape or dimension of the resulting model. After all, what it should do is to render an even more accurate model. The boosts however will force the controller to feed the motors a few extra steps that in effect will slightly change the readings on the compensated axis without Fusion 360 knowing. If the changes were reported to Fusion 360 it will try to readjust the move back, that change of direction will trigger the compensator again and if Fusion 360 kicks in again to readjust the result will be ann unndesired vibration.
-        <br>What happens after all is that, while the actual moves don't affect the dimension of the cuts, we end up having an slightly enlarged 'reported' tool motion box. This post will print the readjusted tool 'theorical' or 'reported' to controller motion box as comments at the end of the G-Code program it generates. It's always a good idea to take a look at the adjusted motion box report to make sure the machine will not run out of range of its allowable movements in any compensated axis, and if so the stock should be replaced to avoid that.
+        <br>If measured accurately, boosting moves to compensate for the backlash should not impact the shape or dimension of the resulting model. After all, what it should do is to render an even more accurate model. The boosts however will force the controller to feed the motors a few extra steps that in effect will slightly change the readings on the compensated axis without Fusion 360 knowing. If the changes were reported to Fusion 360 it will try to readjust the move back, that change of direction will trigger the compensator again and if Fusion 360 kicks in again to readjust the result will be and undesired vibration.
+        <br>What happens after all is that, while the actual moves don't affect the dimension of the cuts, we end up having an slightly enlarged 'reported' tool motion box. This post will print the readjusted tool 'theoretical' or 'reported' to controller motion box as comments at the end of the G-Code program it generates. It's always a good idea to take a look at the adjusted motion box report to make sure the machine will not run out of range of its allowable movements in any compensated axis, and if so the stock should be replaced to avoid that.
         </p>
         <p><b>How to measure the backlash for this post-Processor</b>
         <br>Jog an axis to one direction and jog it back 10mm and measure how far short of 10mm the axis has come back. Repeat the same for 1mm and note the offset amounts. We need the offset for both 1mm and 10mm motion after change of direction.
@@ -132,10 +132,10 @@ Updates:
         <p> </p>
       <ul>
         <li><i>Apply Backlash Compensation</i>
-          <br>If unticked the linear backlash compensation will not be caculated or applied.
+          <br>If unticked the linear backlash compensation will not be calculated or applied.
         </li>
         <li><i>Flush Accumulated Compensation Error</i>
-          <br>When checked, it resets the tool position to WCS home before each operation and starts with a clean slate for that operation. This in effect reduces the risk of errors or offsets accumulations which could be a result of hundereds of back and forth motions in preforming every operation
+          <br>When checked, it resets the tool position to WCS home before each operation and starts with a clean slate for that operation. This in effect reduces the risk of errors or offsets accumulations which could be a result of hundreds of back and forth motions in preforming every operation
         </li>
         <li><i>Flush Accumulated Compensation on Interval</i>
           <br>When checked, it preforms the flushing routine (as above) on specific intervals of:
